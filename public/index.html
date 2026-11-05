@@ -442,7 +442,7 @@ function render(d) {
       const pill = ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa SMS</span>';
       const last = r.until ? ` · ultimo addebito ${shortDate(r.until)}` : '';
       return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
-        <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : (sch ? 'dal ' : 'prevista il ') + shortDate(r.due)) + esc(last)}</div></span>
+        <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(last)}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
     }).join('') + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
   }

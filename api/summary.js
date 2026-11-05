@@ -72,6 +72,11 @@ export default handler(async (req, res) => {
       }
       continue;
     }
+    // Addebito di questo periodo caduto prima del saldo inserito: è già nel saldo, il prossimo è quello del periodo dopo
+    if (entry && dueNow < s0) {
+      rec.push({ ...item, due: nextOccurrence(r.day, s0), status: 'scheduled', overdue: false, paid: null });
+      continue;
+    }
     const key = (r.match || r.name).toLowerCase();
     const tol = Math.max(5, r.amount * 0.3);
     let best = null;
