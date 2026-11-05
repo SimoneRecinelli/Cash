@@ -222,6 +222,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <label for="sDay">Giorno in cui arriva lo stipendio</label>
   <input id="sDay" inputmode="numeric" placeholder="es. 27">
   <div class="hint">Il periodo di budget va da questo giorno al successivo. Lo stipendio viene contato in automatico: non registrarlo come entrata.</div>
+  <label for="sHabit">Spese abituali al mese (€)</label>
+  <input id="sHabit" inputmode="decimal" placeholder="es. 200 per le cene">
+  <div class="hint">Quanto spendi di solito in cene e uscite. Lo tolgo dal margine degli obiettivi per ogni mese che resta; le spese in categoria “Ristoranti” lo consumano e non ti riducono il budget libero.</div>
   <div class="sub-h">Saldo del conto</div>
   <label for="sBal">Saldo attuale del conto (€)</label>
   <input id="sBal" inputmode="decimal" placeholder="es. 3200">
@@ -448,7 +451,7 @@ function render(d) {
       const txt = g.expired
         ? `La data è passata. Saldo stimato ${m(d.balance)}.`
         : g.feasible
-          ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra: in tutto puoi spendere ≈ ${m(g.spendable)}.`
+          ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra${g.habit > 0 ? ` (più ≈ ${m(g.habit)} di spese abituali)` : ''}: in tutto puoi spendere ≈ ${m(g.spendable)}.`
           : `Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
       const tag = g.binding && d.goals.length > 1 ? ' <span class="muted">· guida il budget</span>' : '';
       return `<div class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}">
@@ -546,6 +549,7 @@ let balPrefill = '';
 function openSettings() {
   const s = data ? data.settings : { salary: 0, salary_day: 27 };
   $('#sSalary').value = s.salary || ''; $('#sDay').value = s.salary_day;
+  $('#sHabit').value = s.habit ? String(s.habit).replace('.', ',') : '';
   $('#sBal').value = data && data.balance != null ? data.balance.toFixed(2).replace('.', ',') : '';
   balPrefill = $('#sBal').value;
   $('#setErr').textContent = '';
@@ -574,11 +578,11 @@ $('#goalSave').onclick = async () => {
 $('#btnSettings').onclick = openSettings;
 $('#setSave').onclick = async () => {
   const salary = parseNum($('#sSalary').value), day = parseInt($('#sDay').value, 10);
-  const balStr = $('#sBal').value.trim();
-  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr)))) {
+  const balStr = $('#sBal').value.trim(), habitStr = $('#sHabit').value.trim();
+  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0))) {
     $('#setErr').textContent = 'Controlla i valori inseriti'; return;
   }
-  const body = { salary, salary_day: day };
+  const body = { salary, salary_day: day, habit_monthly: habitStr ? parseNum(habitStr) : 0 };
   if (balStr && balStr !== balPrefill) body.balance = parseNum(balStr);
   try {
     await api('settings', { method: 'PUT', body: JSON.stringify(body) });

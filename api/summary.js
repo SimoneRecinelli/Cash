@@ -11,6 +11,7 @@ export default handler(async (req, res) => {
 
   const [s] = await sql`
     SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
+           habit_monthly::float8 AS habit,
            balance_ref::float8 AS balance_ref,
            to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date
     FROM settings WHERE id = 1`;
@@ -56,6 +57,21 @@ export default handler(async (req, res) => {
   const spent = sum(win.filter((x) => x.type === 'expense'), (x) => x.amount);
   const extra = sum(win.filter((x) => x.type === 'income'), (x) => x.amount);
   const spentToday = sum(win.filter((x) => x.type === 'expense' && x.date === today), (x) => x.amount);
+  // Spese abituali (es. cene): quota mensile attesa; le spese in "Ristoranti" la consumano
+  const habit = s.habit || 0;
+  const habitSpent = Math.min(habit, sum(win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti'), (x) => x.amount));
+  const habitMonths = (from, D) => {
+    // mesi (frazionari) di periodo di stipendio compresi tra from e D
+    const first = period(from, s.salary_day);
+    let m = diffDays(from, D < first.end ? D : first.end) / diffDays(first.start, first.end);
+    let ps = first.end;
+    while (ps < D) {
+      const q = period(ps, s.salary_day);
+      m += diffDays(ps, D < q.end ? D : q.end) / diffDays(q.start, q.end);
+      ps = q.end;
+    }
+    return Math.max(0, m);
+  };
   const arrivedBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, today).length);
 
   // ---- Spese ricorrenti: "verificata" se un SMS/movimento la conferma, altrimenti riservata ----
@@ -110,7 +126,7 @@ export default handler(async (req, res) => {
     // Saldo a inizio finestra: non cambia se spendi o incassi dopo (così spendere riduce il budget 1:1)
     base = balance + spent - extra - arrivedBonus;
     const paidRec = sum(matched.filter((m) => m.inWin), (m) => m.amount);
-    spentBar = spent - paidRec;
+    spentBar = spent - paidRec - habitSpent;
     const lp = Math.max(1, diffDays(s0, p.end));
     goals = active.map((g) => {
       const D = g.date;
@@ -122,14 +138,15 @@ export default handler(async (req, res) => {
         const to = r.until && r.until < D ? r.until : D;
         return from > to ? 0 : r.amount * monthlyCount(r.day, from, to);
       });
-      const A = base + futureIncome - recurringTotal - g.amount; // quanto puoi spendere in tutto fino alla data
+      const habitTotal = habit * habitMonths(s0, D);
+      const A = base + futureIncome - recurringTotal - habitTotal - g.amount; // quanto puoi spendere in tutto fino alla data
       const n = Math.max(1, diffDays(s0, D));
       const L = Math.min(lp, n);
       const perDay = A / n;
       return {
         id: g.id, amount: g.amount, date: D, balance, expired: false,
         feasible: A >= 0, spendable: A, perDay, income: futureIncome, bonus: futBonus,
-        paydays, days: n, need: g.amount - base, recurring: recurringTotal, budget: perDay * L,
+        paydays, days: n, need: g.amount - base, recurring: recurringTotal, habit: habitTotal, budget: perDay * L,
       };
     });
     // L'obiettivo che stringe di più decide il budget del periodo
@@ -174,7 +191,7 @@ export default handler(async (req, res) => {
 
   res.status(200).json({
     today,
-    settings: { salary: s.salary, salary_day: s.salary_day },
+    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit },
     period: p,
     totals: {
       income: s.salary + extra + arrivedBonus,
