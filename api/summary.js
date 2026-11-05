@@ -1,6 +1,6 @@
 import {
   handler, db, todayStr, period, diffDays, countSalaryDates, dueInPeriod,
-  yearlyDates, monthlyCount, addDaysStr,
+  yearlyDates, monthlyCount, addDaysStr, nextOccurrence,
 } from './_lib.js';
 
 const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
@@ -26,7 +26,9 @@ export default handler(async (req, res) => {
         FROM transactions
         WHERE date >= ${p.start}::date AND date < ${p.end}::date
         ORDER BY date DESC, id DESC LIMIT 1000`,
-    sql`SELECT id, name, amount::float8 AS amount, day, match FROM recurring ORDER BY day, id`,
+    sql`SELECT id, name, amount::float8 AS amount, day, match,
+               to_char(starts, 'YYYY-MM-DD') AS starts, to_char(until, 'YYYY-MM-DD') AS until
+        FROM recurring ORDER BY day, id`,
     sql`SELECT id, name, month, day, amount::float8 AS amount FROM bonuses ORDER BY month, day, id`,
     // Movimenti registrati dopo l'ultima volta in cui hai inserito il saldo
     sql`SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0)::float8 AS d
@@ -58,7 +60,18 @@ export default handler(async (req, res) => {
   // ---- Spese ricorrenti: "verificata" se un SMS/movimento la conferma, altrimenti riservata ----
   const used = new Set();
   const matched = [];
-  const rec = recurring.map((r) => {
+  const rec = [];
+  for (const r of recurring) {
+    if (r.until && r.until < p.start) continue; // conclusa
+    const item = { id: r.id, name: r.name, amount: r.amount, day: r.day, match: r.match, starts: r.starts, until: r.until };
+    const dueNow = dueInPeriod(r.day, p.start, p.end);
+    if ((r.starts && dueNow < r.starts) || (r.until && dueNow > r.until)) {
+      // Non cade in questo periodo: se deve ancora iniziare la mostro come programmata
+      if (r.starts && r.starts > p.start) {
+        rec.push({ ...item, due: nextOccurrence(r.day, r.starts), status: 'scheduled', overdue: false, paid: null });
+      }
+      continue;
+    }
     const key = (r.match || r.name).toLowerCase();
     const tol = Math.max(5, r.amount * 0.3);
     let best = null;
@@ -72,14 +85,14 @@ export default handler(async (req, res) => {
       used.add(best.x.id);
       matched.push({ amount: best.x.amount, date: best.x.date, inWin: !entry || best.x.fresh });
     }
-    const due = dueInPeriod(r.day, p.start, p.end);
-    return {
-      id: r.id, name: r.name, amount: r.amount, day: r.day, match: r.match, due,
+    rec.push({
+      ...item,
+      due: dueNow,
       status: best ? 'verified' : 'pending',
-      overdue: !best && due < today,
+      overdue: !best && dueNow < today,
       paid: best ? { amount: best.x.amount, date: best.x.date } : null,
-    };
-  });
+    });
+  }
   const reserved = sum(rec.filter((r) => r.status === 'pending' && (!goalMode || r.due >= s0)), (r) => r.amount);
 
   // ---- Calcolo del budget del periodo ----
@@ -91,7 +104,11 @@ export default handler(async (req, res) => {
     const paydays = countSalaryDates(s0, D, s.salary_day);
     const futBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, D).length);
     const futureIncome = s.salary * paydays + futBonus;
-    const recurringTotal = sum(recurring, (r) => r.amount * monthlyCount(r.day, s0, D));
+    const recurringTotal = sum(recurring, (r) => {
+      const from = r.starts && r.starts > s0 ? r.starts : s0;
+      const to = r.until && r.until < D ? r.until : D;
+      return from > to ? 0 : r.amount * monthlyCount(r.day, from, to);
+    });
     // Saldo a inizio finestra: non cambia se spendi o incassi dopo (così spendere riduce il budget 1:1)
     base = balance + spent - extra - arrivedBonus;
     const A = base + futureIncome - recurringTotal - s.goal_amount; // quanto puoi spendere in tutto fino alla data

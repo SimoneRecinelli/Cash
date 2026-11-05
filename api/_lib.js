@@ -57,6 +57,8 @@ function init() {
         match text NOT NULL DEFAULT '',
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS starts date`;
+      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS until date`;
     })().catch((e) => {
       ready = null;
       throw e;
@@ -157,6 +159,15 @@ export function monthlyCount(day, from, to) {
     [y, m] = addMonths(y, m, 1);
   }
   return n;
+}
+
+// Prima data, a partire da `from` (incluso), in cui cade quel giorno del mese.
+export function nextOccurrence(day, from) {
+  const [y, m] = from.split('-').map(Number);
+  const d = fmt(y, m, Math.min(day, daysInMonth(y, m)));
+  if (d >= from) return d;
+  const [ny, nm] = addMonths(y, m, 1);
+  return fmt(ny, nm, Math.min(day, daysInMonth(ny, nm)));
 }
 
 // Data in cui una spesa ricorrente cade dentro [start, end).
