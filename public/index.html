@@ -164,10 +164,6 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
     </div>
   </section>
 
-  <div class="today" id="todayBox" hidden>
-    <span>Oggi puoi ancora spendere</span><b class="num" id="todayLeft">–</b>
-  </div>
-
   <div class="sec"><h2>Obiettivi sul conto</h2><button class="add-mini" id="btnAddGoal" aria-label="Aggiungi obiettivo">+</button></div>
   <div id="goalList"></div>
 
@@ -375,9 +371,7 @@ function render(d) {
   if (t.remaining < 0) big.textContent = eur.format(-t.remaining);
 
   const dl = Math.max(p.daysLeft, 1);
-  $('#heroSub').innerHTML = t.remaining > 0
-    ? `≈ <b class="num">${eur0.format(t.perDay)}</b> al giorno per ${dl} ${dl === 1 ? 'giorno' : 'giorni'}`
-    : `${dl} ${dl === 1 ? 'giorno' : 'giorni'} al prossimo stipendio`;
+  $('#heroSub').innerHTML = `${dl} ${dl === 1 ? 'giorno' : 'giorni'} al prossimo stipendio`;
 
   const pct = t.budget > 0 ? Math.min(100, (t.spentBar / t.budget) * 100) : (t.spentBar > 0 ? 100 : 0);
   const fill = $('#barFill');
@@ -390,10 +384,6 @@ function render(d) {
   $('#stSaveK').textContent = toGoal ? 'All’obiettivo' : 'Da parte';
   $('#stSave').textContent = eur0.format(toGoal ? t.toGoal : t.savings);
 
-  $('#todayBox').hidden = false;
-  const tl = $('#todayLeft');
-  tl.textContent = eur.format(Math.max(0, t.todayLeft));
-  tl.style.color = t.todayLeft < 0 ? 'var(--bad)' : '';
 
   // categorie
   const cats = d.categories;
@@ -432,7 +422,7 @@ function render(d) {
       const txt = g.expired
         ? `La data è passata. Saldo stimato ${m(d.balance)}.`
         : g.feasible
-          ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra: in tutto puoi spendere ≈ ${m(g.spendable)}, cioè ≈ ${m(g.perDay)} al giorno.`
+          ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra: in tutto puoi spendere ≈ ${m(g.spendable)}.`
           : `Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
       const tag = g.binding && d.goals.length > 1 ? ' <span class="muted">· guida il budget</span>' : '';
       return `<div class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}">
