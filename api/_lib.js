@@ -41,6 +41,18 @@ function init() {
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_set_at timestamptz`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_amount numeric(14,2)`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_date date`;
+      await sql`CREATE TABLE IF NOT EXISTS goals (
+        id serial PRIMARY KEY,
+        amount numeric(14,2) NOT NULL CHECK (amount > 0),
+        date date NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // Migrazione: l'obiettivo singolo delle impostazioni diventa la prima riga di goals
+      await sql`INSERT INTO goals (amount, date)
+        SELECT goal_amount, goal_date FROM settings
+        WHERE id = 1 AND goal_amount IS NOT NULL AND goal_date IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM goals)`;
+      await sql`UPDATE settings SET goal_amount = NULL, goal_date = NULL WHERE id = 1`;
       await sql`CREATE TABLE IF NOT EXISTS bonuses (
         id serial PRIMARY KEY,
         name text NOT NULL,

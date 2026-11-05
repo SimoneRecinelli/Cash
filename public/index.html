@@ -165,11 +165,8 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
     <span>Oggi puoi ancora spendere</span><b class="num" id="todayLeft">–</b>
   </div>
 
-  <div class="goal" id="goalBox" hidden>
-    <div class="g1"><b id="goalTitle"></b><a id="goalSync">Aggiorna saldo</a></div>
-    <div class="bar"><i id="goalFill"></i></div>
-    <div class="g2" id="goalText"></div>
-  </div>
+  <div class="sec"><h2>Obiettivi sul conto</h2><button class="add-mini" id="btnAddGoal" aria-label="Aggiungi obiettivo">+</button></div>
+  <div id="goalList"></div>
 
   <div id="catsWrap" hidden>
     <h2>Per categoria</h2>
@@ -217,15 +214,11 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <label for="sDay">Giorno in cui arriva lo stipendio</label>
   <input id="sDay" inputmode="numeric" placeholder="es. 27">
   <div class="hint">Il periodo di budget va da questo giorno al successivo. Lo stipendio viene contato in automatico: non registrarlo come entrata.</div>
-  <div class="sub-h">Obiettivo sul conto</div>
+  <div class="sub-h">Saldo del conto</div>
   <label for="sBal">Saldo attuale del conto (€)</label>
   <input id="sBal" inputmode="decimal" placeholder="es. 3200">
   <div class="hint">Da qui in poi lo aggiorno io con spese ed entrate. Se si scosta dalla realtà, correggilo.</div>
-  <div class="row2">
-    <div><label for="sGoal">Voglio arrivare a (€)</label><input id="sGoal" inputmode="decimal" placeholder="es. 5000"></div>
-    <div><label for="sGoalDate">Entro il</label><input id="sGoalDate" type="date"></div>
-  </div>
-  <div class="hint">L'app calcola quanto mettere da parte ogni mese e lo toglie dal budget. Lascia vuoto per non usare l'obiettivo.</div>
+  <div class="hint">Gli obiettivi (cifra + data) si aggiungono dalla sezione "Obiettivi sul conto". Puoi averne più d'uno: vale il più stringente.</div>
   <div class="err" id="setErr"></div>
   <button class="primary" id="setSave">Salva</button>
   <button class="link" id="btnLogout">Cambia chiave di accesso</button>
@@ -267,6 +260,18 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 </section>
 
 <!-- Nuova mensilità aggiuntiva -->
+<section class="sheet" id="goalAddSheet" hidden>
+  <h3>Nuovo obiettivo</h3>
+  <div class="row2">
+    <div><label for="gAmount">Voglio arrivare a (€)</label><input id="gAmount" inputmode="decimal" placeholder="es. 20000"></div>
+    <div><label for="gDate">Entro il</label><input id="gDate" type="date"></div>
+  </div>
+  <div class="hint">Con più obiettivi il budget segue quello che stringe di più.</div>
+  <div class="err" id="goalErr"></div>
+  <button class="primary" id="goalSave">Aggiungi</button>
+  <button class="link" data-close>Annulla</button>
+</section>
+
 <section class="sheet" id="bonAddSheet" hidden>
   <h3>Mensilità aggiuntiva</h3>
   <label for="bName">Nome</label>
@@ -412,24 +417,28 @@ function render(d) {
     list.innerHTML = html;
   }
 
-  // obiettivo sul conto
-  const g = d.goal;
-  $('#goalBox').hidden = !g;
-  if (g) {
-    const full = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-    $('#goalTitle').textContent = `Obiettivo ${eur0.format(g.amount)} entro ${full(g.date)}`;
-    const gp = Math.max(0, Math.min(100, (d.balance / g.amount) * 100));
-    $('#goalFill').style.width = gp + '%';
-    $('#goalBox').classList.toggle('bad', !g.expired && !g.feasible);
-    const m = (n) => `<b class="num">${eur0.format(n)}</b>`;
-    const sal = g.paydays === 1 ? '1 stipendio' : `${g.paydays} stipendi`;
-    const piu = g.bonus > 0 ? ` + mensilità extra ${eur0.format(g.bonus)}` : '';
-    $('#goalText').innerHTML = g.expired
-      ? `La data è passata. Saldo stimato ${m(d.balance)}.`
-      : g.feasible
-        ? `Saldo stimato ${m(d.balance)}. Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra: in tutto puoi spendere ≈ ${m(g.spendable)}, cioè ≈ ${m(g.perDay)} al giorno.`
-        : `Saldo stimato ${m(d.balance)}. Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
-  }
+  // obiettivi sul conto
+  const full = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+  const m = (n) => `<b class="num">${eur0.format(n)}</b>`;
+  $('#goalList').innerHTML = !d.goals.length
+    ? '<div class="card"><div class="empty">Nessun obiettivo.<br>Aggiungi una cifra da raggiungere sul conto e una data: calcolo quanto puoi spendere.</div></div>'
+    : d.goals.map((g, i) => {
+      const gp = Math.max(0, Math.min(100, (d.balance / g.amount) * 100));
+      const sal = g.paydays === 1 ? '1 stipendio' : `${g.paydays} stipendi`;
+      const piu = g.bonus > 0 ? ` + mensilità extra ${eur0.format(g.bonus)}` : '';
+      const txt = g.expired
+        ? `La data è passata. Saldo stimato ${m(d.balance)}.`
+        : g.feasible
+          ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra: in tutto puoi spendere ≈ ${m(g.spendable)}, cioè ≈ ${m(g.perDay)} al giorno.`
+          : `Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
+      const tag = g.binding && d.goals.length > 1 ? ' <span class="muted">· guida il budget</span>' : '';
+      return `<div class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}">
+        <div class="g1"><b>${eur0.format(g.amount)} entro ${full(g.date)}${tag}</b>${i === 0 ? '<a class="goalSync">Aggiorna saldo</a>' : ''}</div>
+        <div class="bar"><i style="width:${gp}%"></i></div>
+        <div class="g2">Saldo stimato ${m(d.balance)}. ${txt}</div>
+        <div class="g2"><a class="goalDel" style="color:var(--accent);cursor:pointer">Elimina</a></div>
+      </div>`;
+    }).join('');
 
   // spese ricorrenti
   const rc = d.recurring;
@@ -516,24 +525,41 @@ $('#addSave').onclick = async () => {
 // ---- Impostazioni ----
 let balPrefill = '';
 function openSettings() {
-  const s = data ? data.settings : { salary: 0, salary_day: 27, goal_amount: null, goal_date: null };
+  const s = data ? data.settings : { salary: 0, salary_day: 27 };
   $('#sSalary').value = s.salary || ''; $('#sDay').value = s.salary_day;
   $('#sBal').value = data && data.balance != null ? data.balance.toFixed(2).replace('.', ',') : '';
   balPrefill = $('#sBal').value;
-  $('#sGoal').value = s.goal_amount || ''; $('#sGoalDate').value = s.goal_date || '';
   $('#setErr').textContent = '';
   openSheet('setSheet');
 }
-$('#goalSync').onclick = openSettings;
+$('#goalList').addEventListener('click', async (e) => {
+  if (e.target.closest('.goalSync')) return openSettings();
+  const del = e.target.closest('.goalDel'); if (!del) return;
+  const box = del.closest('.goal'); const g = data.goals.find((x) => String(x.id) === box.dataset.id);
+  if (!g || !confirm(`Eliminare l’obiettivo da ${eur0.format(g.amount)}?`)) return;
+  try { await api('goals?id=' + g.id, { method: 'DELETE' }); toast('Eliminato'); load(); }
+  catch (err) { alert(err.message); }
+});
+$('#btnAddGoal').onclick = () => {
+  $('#gAmount').value = ''; $('#gDate').value = ''; $('#goalErr').textContent = '';
+  openSheet('goalAddSheet');
+};
+$('#goalSave').onclick = async () => {
+  const amount = parseNum($('#gAmount').value), date = $('#gDate').value;
+  if (!(amount > 0) || !date) { $('#goalErr').textContent = 'Inserisci cifra e data'; return; }
+  try {
+    await api('goals', { method: 'POST', body: JSON.stringify({ amount, date }) });
+    closeSheets(); toast('Obiettivo aggiunto'); load();
+  } catch (e) { $('#goalErr').textContent = e.message; }
+};
 $('#btnSettings').onclick = openSettings;
 $('#setSave').onclick = async () => {
   const salary = parseNum($('#sSalary').value), day = parseInt($('#sDay').value, 10);
-  const goalStr = $('#sGoal').value.trim(), goalDate = $('#sGoalDate').value, balStr = $('#sBal').value.trim();
-  const goal = goalStr ? parseNum(goalStr) : null;
-  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (goal !== null && !(goal > 0)) || (balStr && isNaN(parseNum(balStr)))) {
+  const balStr = $('#sBal').value.trim();
+  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr)))) {
     $('#setErr').textContent = 'Controlla i valori inseriti'; return;
   }
-  const body = { salary, salary_day: day, goal_amount: goal, goal_date: goalDate || null };
+  const body = { salary, salary_day: day };
   if (balStr && balStr !== balPrefill) body.balance = parseNum(balStr);
   try {
     await api('settings', { method: 'PUT', body: JSON.stringify(body) });

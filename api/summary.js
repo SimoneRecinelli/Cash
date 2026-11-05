@@ -12,14 +12,13 @@ export default handler(async (req, res) => {
   const [s] = await sql`
     SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
            balance_ref::float8 AS balance_ref,
-           to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date,
-           goal_amount::float8 AS goal_amount, to_char(goal_date, 'YYYY-MM-DD') AS goal_date
+           to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date
     FROM settings WHERE id = 1`;
 
   const today = todayStr();
   const p = period(today, s.salary_day);
 
-  const [transactions, recurring, bonuses, delta] = await Promise.all([
+  const [transactions, recurring, bonuses, delta, goalRows] = await Promise.all([
     sql`SELECT id, type, amount::float8 AS amount, category, note,
                to_char(date, 'YYYY-MM-DD') AS date,
                (created_at > (SELECT balance_set_at FROM settings WHERE id = 1)) AS fresh
@@ -34,6 +33,7 @@ export default handler(async (req, res) => {
     sql`SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0)::float8 AS d
         FROM transactions
         WHERE created_at > (SELECT balance_set_at FROM settings WHERE id = 1)`,
+    sql`SELECT id, amount::float8 AS amount, to_char(date, 'YYYY-MM-DD') AS date FROM goals ORDER BY date, id`,
   ]);
 
   // ---- Saldo stimato: saldo inserito + movimenti + stipendi e mensilità arrivati da allora ----
@@ -44,8 +44,9 @@ export default handler(async (req, res) => {
   }
 
   // ---- Modalità: con obiettivo (serve saldo + data futura) oppure semplice ----
-  const hasGoal = s.goal_amount !== null && s.goal_date && balance !== null;
-  const goalMode = hasGoal && s.goal_date > today;
+  const hasGoal = goalRows.length > 0 && balance !== null;
+  const active = hasGoal ? goalRows.filter((g) => g.date > today) : [];
+  const goalMode = active.length > 0;
   // Se il saldo è stato inserito in questo periodo, si parte da quel momento (le spese prima sono già nel saldo).
   const entry = goalMode && s.balance_date >= p.start;
   const s0 = entry ? s.balance_date : p.start;
@@ -104,34 +105,46 @@ export default handler(async (req, res) => {
   let remaining, budget, spentBar, goal = null, base = null;
   let savings = s.savings_goal;
 
+  let goals = [];
   if (goalMode) {
-    const D = s.goal_date;
-    const paydays = countSalaryDates(s0, D, s.salary_day);
-    const futBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, D).length);
-    const futureIncome = s.salary * paydays + futBonus;
-    const recurringTotal = sum(recurring, (r) => {
-      const from = r.starts && r.starts > s0 ? r.starts : s0;
-      const to = r.until && r.until < D ? r.until : D;
-      return from > to ? 0 : r.amount * monthlyCount(r.day, from, to);
-    });
     // Saldo a inizio finestra: non cambia se spendi o incassi dopo (così spendere riduce il budget 1:1)
     base = balance + spent - extra - arrivedBonus;
-    const A = base + futureIncome - recurringTotal - s.goal_amount; // quanto puoi spendere in tutto fino alla data
-    const n = Math.max(1, diffDays(s0, D));
-    const L = Math.min(Math.max(1, diffDays(s0, p.end)), n);
-    const perDay = A / n;
-    budget = perDay * L; // budget "libero" del periodo, già al netto delle ricorrenti
     const paidRec = sum(matched.filter((m) => m.inWin), (m) => m.amount);
     spentBar = spent - paidRec;
+    const lp = Math.max(1, diffDays(s0, p.end));
+    goals = active.map((g) => {
+      const D = g.date;
+      const paydays = countSalaryDates(s0, D, s.salary_day);
+      const futBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, D).length);
+      const futureIncome = s.salary * paydays + futBonus;
+      const recurringTotal = sum(recurring, (r) => {
+        const from = r.starts && r.starts > s0 ? r.starts : s0;
+        const to = r.until && r.until < D ? r.until : D;
+        return from > to ? 0 : r.amount * monthlyCount(r.day, from, to);
+      });
+      const A = base + futureIncome - recurringTotal - g.amount; // quanto puoi spendere in tutto fino alla data
+      const n = Math.max(1, diffDays(s0, D));
+      const L = Math.min(lp, n);
+      const perDay = A / n;
+      return {
+        id: g.id, amount: g.amount, date: D, balance, expired: false,
+        feasible: A >= 0, spendable: A, perDay, income: futureIncome, bonus: futBonus,
+        paydays, days: n, need: g.amount - base, recurring: recurringTotal, budget: perDay * L,
+      };
+    });
+    // L'obiettivo che stringe di più decide il budget del periodo
+    const bind = goals.reduce((m, g) => (g.budget < m.budget ? g : m), goals[0]);
+    bind.binding = true;
+    goal = bind;
+    budget = bind.budget;
     remaining = budget + extra - spentBar;
     savings = 0;
-    goal = {
-      amount: s.goal_amount, date: D, balance, expired: false,
-      feasible: A >= 0, spendable: A, perDay, income: futureIncome, bonus: futBonus,
-      paydays, days: n, need: s.goal_amount - base, recurring: recurringTotal,
-    };
   } else {
-    if (hasGoal) goal = { amount: s.goal_amount, date: s.goal_date, balance, expired: true };
+    if (hasGoal) {
+      const last = goalRows[goalRows.length - 1];
+      goal = { id: last.id, amount: last.amount, date: last.date, balance, expired: true };
+      goals = goalRows.map((g) => ({ id: g.id, amount: g.amount, date: g.date, balance, expired: true }));
+    }
     budget = s.salary + extra + arrivedBonus - savings;
     spentBar = spent;
     remaining = budget - spent - reserved;
@@ -161,7 +174,7 @@ export default handler(async (req, res) => {
 
   res.status(200).json({
     today,
-    settings: { salary: s.salary, salary_day: s.salary_day, goal_amount: s.goal_amount, goal_date: s.goal_date },
+    settings: { salary: s.salary, salary_day: s.salary_day },
     period: p,
     totals: {
       income: s.salary + extra + arrivedBonus,
@@ -171,7 +184,7 @@ export default handler(async (req, res) => {
       spentToday,
       spentBar,
       savings,
-      toGoal: goalMode ? Math.max(0, s.goal_amount - balance) : 0,
+      toGoal: goalMode ? Math.max(0, goal.amount - balance) : 0,
       reserved,
       budget,
       remaining,
@@ -180,6 +193,7 @@ export default handler(async (req, res) => {
     },
     balance,
     goal,
+    goals,
     recurring: rec,
     bonuses: bon,
     categories,

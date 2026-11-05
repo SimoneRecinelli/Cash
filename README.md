@@ -13,8 +13,9 @@ Il periodo va dal giorno di stipendio al giorno di stipendio successivo.
 
 Lo stipendio è contato in automatico: non registrarlo come entrata.
 
-**Obiettivo sul conto.** In Impostazioni inserisci il saldo attuale, la cifra che vuoi
-raggiungere e la data. L'app stima il saldo (saldo inserito + movimenti registrati +
+**Obiettivi sul conto.** In Impostazioni inserisci il saldo attuale; poi, dalla sezione
+"Obiettivi sul conto", aggiungi una o più coppie cifra + data. Con più obiettivi il budget
+segue quello che stringe di più. L'app stima il saldo (saldo inserito + movimenti registrati +
 stipendi arrivati) e calcola quanto mettere da parte a ogni stipendio per arrivarci;
 quella cifra viene tolta dal budget. Spendere non la fa cambiare. Se il saldo stimato
 si scosta da quello vero, correggilo da Impostazioni (o da "Aggiorna saldo").
