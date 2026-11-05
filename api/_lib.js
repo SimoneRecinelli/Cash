@@ -41,6 +41,8 @@ function init() {
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_set_at timestamptz`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_monthly numeric(12,2) NOT NULL DEFAULT 0`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS safety_margin numeric(12,2) NOT NULL DEFAULT 0`;
+      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_left numeric(12,2)`;
+      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_left_for date`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_amount numeric(14,2)`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_date date`;
       await sql`CREATE TABLE IF NOT EXISTS goals (

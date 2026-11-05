@@ -11,7 +11,8 @@ export default handler(async (req, res) => {
 
   const [s] = await sql`
     SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
-           habit_monthly::float8 AS habit, safety_margin::float8 AS margin,
+           habit_monthly::float8 AS habit, habit_left::float8 AS habit_left,
+           to_char(habit_left_for, 'YYYY-MM-DD') AS habit_left_for, safety_margin::float8 AS margin,
            balance_ref::float8 AS balance_ref,
            to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date
     FROM settings WHERE id = 1`;
@@ -59,7 +60,13 @@ export default handler(async (req, res) => {
   const spentToday = sum(win.filter((x) => x.type === 'expense' && x.date === today), (x) => x.amount);
   // Spese abituali (es. cene): quota mensile attesa; le spese in "Ristoranti" la consumano
   const habit = s.habit || 0;
-  const habitSpent = Math.min(habit, sum(win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti'), (x) => x.amount));
+  // Quota di spese abituali del periodo corrente: indicata da te (cene ancora previste) oppure,
+  // se il saldo è stato inserito a metà periodo, la parte proporzionale ai giorni che restano.
+  const frac = entry ? diffDays(s0, p.end) / diffDays(p.start, p.end) : 1;
+  const leftSet = s.habit_left !== null && s.habit_left_for === p.start;
+  const curHabit = leftSet ? s.habit_left : habit * frac;
+  const habitSpent = Math.min(curHabit, sum(win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti'), (x) => x.amount));
+  const habitLeft = Math.max(0, curHabit - habitSpent);
   const habitMonths = (from, D) => {
     // mesi (frazionari) di periodo di stipendio compresi tra from e D
     const first = period(from, s.salary_day);
@@ -138,7 +145,7 @@ export default handler(async (req, res) => {
         const to = r.until && r.until < D ? r.until : D;
         return from > to ? 0 : r.amount * monthlyCount(r.day, from, to);
       });
-      const habitTotal = habit * habitMonths(s0, D);
+      const habitTotal = D <= p.end ? curHabit * (diffDays(s0, D) / Math.max(1, diffDays(s0, p.end))) : curHabit + habit * habitMonths(p.end, D);
       const A = base + futureIncome - recurringTotal - habitTotal - g.amount; // quanto puoi spendere in tutto fino alla data
       const n = Math.max(1, diffDays(s0, D));
       const L = Math.min(lp, n);
@@ -191,7 +198,7 @@ export default handler(async (req, res) => {
 
   res.status(200).json({
     today,
-    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, margin: s.margin },
+    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, margin: s.margin, habit_left: leftSet ? s.habit_left : null },
     period: p,
     totals: {
       income: s.salary + extra + arrivedBonus,
@@ -203,6 +210,7 @@ export default handler(async (req, res) => {
       savings,
       toGoal: goalMode ? Math.max(0, goal.amount - balance) : 0,
       reserved,
+      habitLeft: goalMode ? habitLeft : 0,
       budget,
       remaining,
       perDay: perDayNow,

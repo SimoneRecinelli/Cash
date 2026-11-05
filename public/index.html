@@ -228,6 +228,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <label for="sMargin">Margine di sicurezza (€)</label>
   <input id="sMargin" inputmode="decimal" placeholder="es. 200">
   <div class="hint">Una riserva che tengo fuori dal budget e dal simulatore: un acquisto è “sì” solo se agli obiettivi resta almeno questa cifra.</div>
+  <label for="sLeft">Cene ancora previste fino al prossimo stipendio (€)</label>
+  <input id="sLeft" inputmode="decimal" placeholder="lascia vuoto per il calcolo automatico">
+  <div class="hint">Se sai già quanto spenderai in cene da qui al prossimo stipendio, scrivilo: vale solo per questo periodo.</div>
   <div class="sub-h">Saldo del conto</div>
   <label for="sBal">Saldo attuale del conto (€)</label>
   <input id="sBal" inputmode="decimal" placeholder="es. 3200">
@@ -395,7 +398,8 @@ function render(d) {
   const ratio = t.budget > 0 ? t.remaining / t.budget : 0;
   const state = t.remaining < 0 ? 'bad' : ratio < 0.15 ? 'warn' : 'good';
   const big = $('#remaining');
-  big.textContent = eur.format(t.remaining);
+  const hl = t.habitLeft || 0;
+  big.textContent = eur.format(t.remaining + hl);
   big.className = 'big num ' + state;
   $('#heroLabel').textContent = t.remaining < 0
     ? (d.goal && !d.goal.expired ? 'Sei oltre il piano per l’obiettivo di' : 'Hai superato il budget di')
@@ -403,7 +407,12 @@ function render(d) {
   if (t.remaining < 0) big.textContent = eur.format(-t.remaining);
 
   const dl = Math.max(p.daysLeft, 1);
-  $('#heroSub').innerHTML = `${dl} ${dl === 1 ? 'giorno' : 'giorni'} al prossimo stipendio`;
+  const days = `${dl} ${dl === 1 ? 'giorno' : 'giorni'} al prossimo stipendio`;
+  $('#heroSub').innerHTML = hl > 0
+    ? (t.remaining >= 0
+      ? `di cui <b class="num">${eur0.format(hl)}</b> per le cene e <b class="num">${eur0.format(t.remaining)}</b> oltre la cena · ${days}`
+      : `più <b class="num">${eur0.format(hl)}</b> già riservati per le cene · ${days}`)
+    : days;
 
   const pct = t.budget > 0 ? Math.min(100, (t.spentBar / t.budget) * 100) : (t.spentBar > 0 ? 100 : 0);
   const fill = $('#barFill');
@@ -552,6 +561,7 @@ let balPrefill = '';
 function openSettings() {
   const s = data ? data.settings : { salary: 0, salary_day: 27 };
   $('#sSalary').value = s.salary || ''; $('#sDay').value = s.salary_day;
+  $('#sLeft').value = s.habit_left != null ? String(s.habit_left).replace('.', ',') : '';
   $('#sMargin').value = s.margin ? String(s.margin).replace('.', ',') : '';
   $('#sHabit').value = s.habit ? String(s.habit).replace('.', ',') : '';
   $('#sBal').value = data && data.balance != null ? data.balance.toFixed(2).replace('.', ',') : '';
@@ -582,11 +592,11 @@ $('#goalSave').onclick = async () => {
 $('#btnSettings').onclick = openSettings;
 $('#setSave').onclick = async () => {
   const salary = parseNum($('#sSalary').value), day = parseInt($('#sDay').value, 10);
-  const balStr = $('#sBal').value.trim(), habitStr = $('#sHabit').value.trim(), marginStr = $('#sMargin').value.trim();
-  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0)) || (marginStr && !(parseNum(marginStr) >= 0))) {
+  const balStr = $('#sBal').value.trim(), habitStr = $('#sHabit').value.trim(), marginStr = $('#sMargin').value.trim(), leftStr = $('#sLeft').value.trim();
+  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0)) || (marginStr && !(parseNum(marginStr) >= 0)) || (leftStr && !(parseNum(leftStr) >= 0))) {
     $('#setErr').textContent = 'Controlla i valori inseriti'; return;
   }
-  const body = { salary, salary_day: day, habit_monthly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0 };
+  const body = { salary, salary_day: day, habit_monthly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0, habit_left: leftStr ? parseNum(leftStr) : '' };
   if (balStr && balStr !== balPrefill) body.balance = parseNum(balStr);
   try {
     await api('settings', { method: 'PUT', body: JSON.stringify(body) });

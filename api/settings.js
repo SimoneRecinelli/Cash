@@ -1,4 +1,4 @@
-import { handler, db } from './_lib.js';
+import { handler, db, todayStr, period } from './_lib.js';
 
 export default handler(async (req, res) => {
   const sql = db();
@@ -17,6 +17,11 @@ export default handler(async (req, res) => {
     const day = Number(b.salary_day);
     const margin = b.safety_margin === undefined || b.safety_margin === '' || b.safety_margin === null ? 0 : Number(b.safety_margin);
     const habit = b.habit_monthly === undefined || b.habit_monthly === '' || b.habit_monthly === null ? 0 : Number(b.habit_monthly);
+    const hasLeft = b.habit_left !== undefined && b.habit_left !== null && b.habit_left !== '';
+    const left = hasLeft ? Number(b.habit_left) : null;
+    if (hasLeft && (!Number.isFinite(left) || left < 0 || left > 10_000_000)) {
+      return res.status(400).json({ error: 'Cene previste non valide' });
+    }
     const hasBalance = b.balance !== undefined && b.balance !== null && b.balance !== '';
     const balance = hasBalance ? Number(b.balance) : null;
 
@@ -42,6 +47,12 @@ export default handler(async (req, res) => {
           habit_monthly = ${Math.round(habit * 100) / 100},
           safety_margin = ${Math.round(margin * 100) / 100}
       WHERE id = 1`;
+    {
+      const [cur] = await sql`SELECT salary_day FROM settings WHERE id = 1`;
+      const start = period(todayStr(), cur.salary_day).start;
+      await sql`UPDATE settings SET habit_left = ${left === null ? null : Math.round(left * 100) / 100},
+        habit_left_for = ${left === null ? null : start}::date WHERE id = 1`;
+    }
     if (hasBalance) {
       await sql`UPDATE settings SET balance_ref = ${Math.round(balance * 100) / 100}, balance_set_at = now() WHERE id = 1`;
     }
