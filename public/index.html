@@ -103,7 +103,10 @@ select { width: 100%; font-size: 16px; padding: 12px 14px; border-radius: 12px; 
 .pill.ok { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
 .pill.late { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 .recnote { padding: 10px 16px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.row2 > div { min-width: 0; }
+input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; min-height: 48px; line-height: 1.2; text-align: left; }
+input[type=date]::-webkit-date-and-time-value { text-align: left; }
 .actions { display: grid; gap: 10px; margin-top: 4px; }
 .btn2 { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 14px; padding: 14px;
   font: 600 15px inherit; cursor: pointer; }
