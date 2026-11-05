@@ -41,6 +41,14 @@ function init() {
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_set_at timestamptz`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_amount numeric(14,2)`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_date date`;
+      await sql`CREATE TABLE IF NOT EXISTS bonuses (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        month int NOT NULL CHECK (month BETWEEN 1 AND 12),
+        day int NOT NULL CHECK (day BETWEEN 1 AND 31),
+        amount numeric(12,2) NOT NULL CHECK (amount > 0),
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       await sql`CREATE TABLE IF NOT EXISTS recurring (
         id serial PRIMARY KEY,
         name text NOT NULL,
@@ -118,6 +126,34 @@ export function countSalaryDates(after, upto, day) {
   while (y * 12 + m <= uy * 12 + um) {
     const d = fmt(y, m, Math.min(day, daysInMonth(y, m)));
     if (d > after && d <= upto) n++;
+    [y, m] = addMonths(y, m, 1);
+  }
+  return n;
+}
+
+export const addDaysStr = (s, n) => new Date(Date.parse(s) + n * 86400000).toISOString().slice(0, 10);
+
+// Date in (after, upto] in cui cade un pagamento annuale (es. tredicesima: mese 12, giorno 24).
+export function yearlyDates(month, day, after, upto) {
+  const out = [];
+  const y0 = Number(after.slice(0, 4));
+  const y1 = Number(upto.slice(0, 4));
+  for (let y = y0; y <= y1; y++) {
+    const d = fmt(y, month, Math.min(day, daysInMonth(y, month)));
+    if (d > after && d <= upto) out.push(d);
+  }
+  return out;
+}
+
+// Quante volte cade, tra from e to (entrambi inclusi), un pagamento mensile il giorno `day`.
+export function monthlyCount(day, from, to) {
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  let n = 0;
+  let [y, m] = [fy, fm];
+  while (y * 12 + m <= ty * 12 + tm) {
+    const d = fmt(y, m, Math.min(day, daysInMonth(y, m)));
+    if (d >= from && d <= to) n++;
     [y, m] = addMonths(y, m, 1);
   }
   return n;

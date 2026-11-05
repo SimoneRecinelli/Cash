@@ -19,6 +19,17 @@ stipendi arrivati) e calcola quanto mettere da parte a ogni stipendio per arriva
 quella cifra viene tolta dal budget. Spendere non la fa cambiare. Se il saldo stimato
 si scosta da quello vero, correggilo da Impostazioni (o da "Aggiorna saldo").
 
+**Come funziona con l'obiettivo.** Da qui alla data entrano gli stipendi che mancano più le
+mensilità aggiuntive (tredicesima, quattordicesima…). Tolto quello che serve per arrivare
+alla cifra e le spese ricorrenti, quanto avanza è ciò che puoi spendere in tutto. Il budget
+del periodo ne prende la parte proporzionale ai giorni e resta fisso: spendere lo riduce
+esattamente di quanto spendi. Si ricalcola a ogni nuovo stipendio e quando correggi il saldo.
+Se la cifra non è raggiungibile, l'app lo dice invece di mostrare numeri senza senso.
+
+**Mensilità aggiuntive.** Importo netto previsto e data (si ripete ogni anno). Contano come
+entrata solo quando la data è arrivata. Per la tredicesima un'ipotesi ragionevole è circa il
+90% dello stipendio netto mensile, perché non ha le detrazioni mensili.
+
 **Spese ricorrenti.** Affitto, abbonamenti, rate: indica nome, importo e giorno del mese.
 Finché non arriva un SMS che le conferma (stessa parola chiave e importo simile) l'importo
 è *riservato* nel budget; quando l'SMS arriva diventa "Verificata" e non viene contato due

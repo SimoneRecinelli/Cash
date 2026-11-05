@@ -81,6 +81,9 @@ h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: upp
 .goal .g1 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; }
 .goal .g1 b { font-size: 15px; }
 .goal .g1 a { color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.goal.bad { box-shadow: inset 0 0 0 1.5px var(--warn), var(--shadow); }
+select { width: 100%; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink); font-family: inherit; }
 .goal .bar { margin: 12px 0 10px; height: 8px; }
 .goal .g2 { font-size: 13px; color: var(--muted); }
 .goal .g2 b { color: var(--ink); font-weight: 600; }
@@ -154,7 +157,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
     <div class="stats">
       <div class="stat"><div class="k">Entrate</div><div class="v num" id="stIncome">–</div></div>
       <div class="stat"><div class="k">Spese</div><div class="v num" id="stSpent">–</div></div>
-      <div class="stat"><div class="k">Da parte</div><div class="v num" id="stSave">–</div></div>
+      <div class="stat"><div class="k" id="stSaveK">Da parte</div><div class="v num" id="stSave">–</div></div>
     </div>
   </section>
 
@@ -175,6 +178,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 
   <div class="sec"><h2>Spese ricorrenti</h2><button class="add-mini" id="btnAddRec" aria-label="Aggiungi ricorrente">+</button></div>
   <div class="card" id="recList"></div>
+
+  <div class="sec"><h2>Tredicesima e altre mensilità</h2><button class="add-mini" id="btnAddBon" aria-label="Aggiungi mensilità">+</button></div>
+  <div class="card" id="bonList"></div>
 
   <h2>Movimenti</h2>
   <div class="card" id="list"><div class="empty">Caricamento…</div></div>
@@ -254,6 +260,24 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <button class="link" data-close>Chiudi</button>
 </section>
 
+<!-- Nuova mensilità aggiuntiva -->
+<section class="sheet" id="bonAddSheet" hidden>
+  <h3>Mensilità aggiuntiva</h3>
+  <label for="bName">Nome</label>
+  <input id="bName" maxlength="60" placeholder="es. Tredicesima" autocomplete="off">
+  <label for="bAmount">Importo netto previsto (€)</label>
+  <input id="bAmount" inputmode="decimal" placeholder="es. 1560">
+  <div class="row2">
+    <div><label for="bMonth">Mese</label>
+      <select id="bMonth"></select></div>
+    <div><label for="bDay">Giorno</label><input id="bDay" inputmode="numeric" placeholder="es. 24"></div>
+  </div>
+  <div class="hint">Si ripete ogni anno. Conta come entrata nel periodo in cui arriva, non prima.</div>
+  <div class="err" id="bonErr"></div>
+  <button class="primary" id="bonSave">Aggiungi</button>
+  <button class="link" data-close>Annulla</button>
+</section>
+
 <!-- Chiave di accesso -->
 <section class="sheet" id="keySheet" hidden>
   <h3>Accesso</h3>
@@ -331,7 +355,9 @@ function render(d) {
   const big = $('#remaining');
   big.textContent = eur.format(t.remaining);
   big.className = 'big num ' + state;
-  $('#heroLabel').textContent = t.remaining < 0 ? 'Hai superato il budget di' : 'Ti restano da spendere';
+  $('#heroLabel').textContent = t.remaining < 0
+    ? (d.goal && !d.goal.expired ? 'Sei oltre il piano per l’obiettivo di' : 'Hai superato il budget di')
+    : 'Ti restano da spendere';
   if (t.remaining < 0) big.textContent = eur.format(-t.remaining);
 
   const dl = Math.max(p.daysLeft, 1);
@@ -339,14 +365,16 @@ function render(d) {
     ? `≈ <b class="num">${eur0.format(t.perDay)}</b> al giorno per ${dl} ${dl === 1 ? 'giorno' : 'giorni'}`
     : `${dl} ${dl === 1 ? 'giorno' : 'giorni'} al prossimo stipendio`;
 
-  const pct = t.budget > 0 ? Math.min(100, (t.spent / t.budget) * 100) : (t.spent > 0 ? 100 : 0);
+  const pct = t.budget > 0 ? Math.min(100, (t.spentBar / t.budget) * 100) : (t.spentBar > 0 ? 100 : 0);
   const fill = $('#barFill');
   fill.style.width = pct + '%';
   fill.className = state === 'good' ? '' : state;
 
   $('#stIncome').textContent = eur0.format(t.income);
   $('#stSpent').textContent = eur0.format(t.spent);
-  $('#stSave').textContent = eur0.format(t.savings);
+  const toGoal = d.goal && !d.goal.expired;
+  $('#stSaveK').textContent = toGoal ? 'All’obiettivo' : 'Da parte';
+  $('#stSave').textContent = eur0.format(toGoal ? t.toGoal : t.savings);
 
   $('#todayBox').hidden = false;
   const tl = $('#todayLeft');
@@ -386,12 +414,15 @@ function render(d) {
     $('#goalTitle').textContent = `Obiettivo ${eur0.format(g.amount)} entro ${full(g.date)}`;
     const gp = Math.max(0, Math.min(100, (d.balance / g.amount) * 100));
     $('#goalFill').style.width = gp + '%';
-    const mesi = g.months === 1 ? '1 stipendio' : `${g.months} stipendi`;
-    $('#goalText').innerHTML = g.reached
-      ? `Saldo stimato <b class="num">${eur0.format(d.balance)}</b> · obiettivo già coperto, nessun accantonamento richiesto.`
-      : g.expired
-        ? `Data superata. Saldo stimato <b class="num">${eur0.format(d.balance)}</b>.`
-        : `Saldo stimato <b class="num">${eur0.format(d.balance)}</b> · metti da parte <b class="num">${eur0.format(g.perMonth)}</b> al mese (${g.months ? mesi + ' da qui alla data' : 'la data cade prima del prossimo stipendio'}), già tolti dal budget.`;
+    $('#goalBox').classList.toggle('bad', !g.expired && !g.feasible);
+    const m = (n) => `<b class="num">${eur0.format(n)}</b>`;
+    const sal = g.paydays === 1 ? '1 stipendio' : `${g.paydays} stipendi`;
+    const piu = g.bonus > 0 ? ` + mensilità extra ${eur0.format(g.bonus)}` : '';
+    $('#goalText').innerHTML = g.expired
+      ? `La data è passata. Saldo stimato ${m(d.balance)}.`
+      : g.feasible
+        ? `Saldo stimato ${m(d.balance)}. Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra: in tutto puoi spendere ≈ ${m(g.spendable)}, cioè ≈ ${m(g.perDay)} al giorno.`
+        : `Saldo stimato ${m(d.balance)}. Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
   }
 
   // spese ricorrenti
@@ -405,8 +436,19 @@ function render(d) {
       return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
         <div class="t2">${ok ? 'pagata il ' + esc(shortDate(r.paid.date)) : 'prevista il ' + esc(shortDate(r.due))}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
-    }).join('') + (t.reserved > 0 ? `<div class="recnote">Riservati nel budget per questo periodo: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
+    }).join('') + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
   }
+
+  // mensilità aggiuntive
+  const bn = d.bonuses;
+  $('#bonList').innerHTML = !bn.length
+    ? '<div class="empty">Nessuna mensilità aggiuntiva.<br>Aggiungi tredicesima, quattordicesima o premi: li conto quando arrivano.</div>'
+    : bn.map((b) => {
+      const ok = b.status === 'arrived';
+      return `<button class="rec" data-id="${b.id}"><span class="mid"><div class="t1">${esc(b.name)}<span class="pill ${ok ? 'ok' : ''}">${ok ? 'Arrivata' : 'In arrivo'}</span></div>
+        <div class="t2">${ok ? 'accreditata il ' : 'prevista il '}${esc(new Date(b.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
+        <span class="amt num">≈ ${eur0.format(b.amount)}</span></button>`;
+    }).join('');
 
   // prima configurazione
   if (s.salary === 0 && !localStorage.getItem('setupShown')) {
@@ -532,6 +574,30 @@ $('#recDel').onclick = async () => {
   try { await api('recurring?id=' + recSel.id, { method: 'DELETE' }); closeSheets(); toast('Eliminata'); load(); }
   catch (e) { alert(e.message); }
 };
+
+// ---- Mensilità aggiuntive ----
+$('#bMonth').innerHTML = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre']
+  .map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+$('#btnAddBon').onclick = () => {
+  ['#bName', '#bAmount', '#bDay'].forEach((i) => ($(i).value = ''));
+  $('#bMonth').value = '12'; $('#bonErr').textContent = '';
+  openSheet('bonAddSheet');
+};
+$('#bonSave').onclick = async () => {
+  const amount = parseNum($('#bAmount').value), day = parseInt($('#bDay').value, 10), month = parseInt($('#bMonth').value, 10);
+  if (!$('#bName').value.trim() || !(amount > 0) || !(day >= 1 && day <= 31)) { $('#bonErr').textContent = 'Inserisci nome, importo e giorno (1-31)'; return; }
+  try {
+    await api('bonuses', { method: 'POST', body: JSON.stringify({ name: $('#bName').value, amount, month, day }) });
+    closeSheets(); toast('Mensilità aggiunta'); load();
+  } catch (e) { $('#bonErr').textContent = e.message; }
+};
+$('#bonList').addEventListener('click', async (e) => {
+  const b = e.target.closest('.rec'); if (!b) return;
+  const x = data.bonuses.find((r) => String(r.id) === b.dataset.id);
+  if (!x || !confirm(`Eliminare “${x.name}”?`)) return;
+  try { await api('bonuses?id=' + x.id, { method: 'DELETE' }); toast('Eliminata'); load(); }
+  catch (err) { alert(err.message); }
+});
 
 // ---- Chiave ----
 $('#kSave').onclick = async () => {
