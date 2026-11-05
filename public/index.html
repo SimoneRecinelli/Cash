@@ -143,6 +143,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .aff-res { margin: 14px 0 0; padding: 14px; border-radius: 14px; background: var(--bg); font-size: 14px; line-height: 1.45; }
 .aff-res b.v { display: block; font-size: 17px; margin-bottom: 4px; }
 .aff-res.ok b.v { color: var(--accent); }
+.aff-res.warn b.v { color: var(--warn); }
 .aff-res.no b.v { color: var(--bad); }
 .link { background: none; border: 0; color: var(--muted); font: 500 14px inherit; padding: 14px 0 0; cursor: pointer; width: 100%; }
 .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
@@ -681,8 +682,14 @@ function simulate(price, n, first) {
       return { g, cost, margin: g.spendable - cost };
     });
     const worst = rows.reduce((a, r) => (r.margin < a.margin ? r : a), rows[0]);
+    const nowCost = q * dates.filter((x) => x < data.period.end).length;
+    const rem = Math.max(0, data.totals.remaining);
     if (worst.margin >= 0) {
-      return { ok: true, html: `<b class="v">Sì, puoi permettertelo</b>${rate}: dopo l’acquisto agli obiettivi restano ≈ <b class="num">${eur0.format(worst.margin)}</b> di margine (il punto più stretto è l’obiettivo ${eur0.format(worst.g.amount)} del ${fmtD(worst.g.date)}).${tail}` };
+      const tight = `il punto più stretto è l’obiettivo ${eur0.format(worst.g.amount)} del ${fmtD(worst.g.date)}`;
+      if (nowCost <= rem) {
+        return { ok: true, html: `<b class="v">Sì, puoi permettertelo</b>${rate}: fino al prossimo stipendio paghi ${eur.format(nowCost)} e te ne restano ≈ <b class="num">${eur0.format(rem - nowCost)}</b>. Agli obiettivi restano ≈ <b class="num">${eur0.format(worst.margin)}</b> di margine (${tight}).${tail}` };
+      }
+      return { ok: false, warn: true, html: `<b class="v">Gli obiettivi reggono, ma sfori questo periodo</b>${rate}: fino al prossimo stipendio paghi ${eur.format(nowCost)}, ma te ne restano solo ≈ <b class="num">${eur0.format(rem)}</b> (sfori di ≈ <b class="num">${eur0.format(nowCost - rem)}</b>). Gli obiettivi reggono comunque, con ≈ <b class="num">${eur0.format(worst.margin)}</b> di margine (${tight}), ma nei prossimi periodi avrai meno da spendere.${tail}` };
     }
     const bad = rows.filter((r) => r.margin < 0);
     return { ok: false, html: `<b class="v">Meglio di no</b>${rate}: ${bad.length > 1 ? 'più obiettivi non reggerebbero' : 'un obiettivo non reggerebbe'}. Il più colpito è ${eur0.format(worst.g.amount)} entro ${fmtD(worst.g.date)}: finiresti sotto di ≈ <b class="num">${eur0.format(-worst.margin)}</b>, anche senza altre spese.${tail}` };
@@ -698,7 +705,7 @@ $('#aGo').onclick = () => {
   const res = $('#aRes'); res.hidden = false;
   if (!(price > 0) || !(n >= 1 && n <= 120)) { res.className = 'aff-res'; res.textContent = 'Inserisci prezzo e numero di rate (1-120).'; return; }
   const r = simulate(price, n, parseInt($('#aFirst').value, 10));
-  res.className = 'aff-res ' + (r.ok ? 'ok' : 'no'); res.innerHTML = r.html;
+  res.className = 'aff-res ' + (r.ok ? 'ok' : r.warn ? 'warn' : 'no'); res.innerHTML = r.html;
 };
 
 // ---- Chiave ----
