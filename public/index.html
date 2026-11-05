@@ -225,6 +225,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <label for="sHabit">Spese abituali al mese (€)</label>
   <input id="sHabit" inputmode="decimal" placeholder="es. 200 per le cene">
   <div class="hint">Quanto spendi di solito in cene e uscite. Lo tolgo dal margine degli obiettivi per ogni mese che resta; le spese in categoria “Ristoranti” lo consumano e non ti riducono il budget libero.</div>
+  <label for="sMargin">Margine di sicurezza (€)</label>
+  <input id="sMargin" inputmode="decimal" placeholder="es. 200">
+  <div class="hint">Una riserva che tengo fuori dal budget e dal simulatore: un acquisto è “sì” solo se agli obiettivi resta almeno questa cifra.</div>
   <div class="sub-h">Saldo del conto</div>
   <label for="sBal">Saldo attuale del conto (€)</label>
   <input id="sBal" inputmode="decimal" placeholder="es. 3200">
@@ -549,6 +552,7 @@ let balPrefill = '';
 function openSettings() {
   const s = data ? data.settings : { salary: 0, salary_day: 27 };
   $('#sSalary').value = s.salary || ''; $('#sDay').value = s.salary_day;
+  $('#sMargin').value = s.margin ? String(s.margin).replace('.', ',') : '';
   $('#sHabit').value = s.habit ? String(s.habit).replace('.', ',') : '';
   $('#sBal').value = data && data.balance != null ? data.balance.toFixed(2).replace('.', ',') : '';
   balPrefill = $('#sBal').value;
@@ -578,11 +582,11 @@ $('#goalSave').onclick = async () => {
 $('#btnSettings').onclick = openSettings;
 $('#setSave').onclick = async () => {
   const salary = parseNum($('#sSalary').value), day = parseInt($('#sDay').value, 10);
-  const balStr = $('#sBal').value.trim(), habitStr = $('#sHabit').value.trim();
-  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0))) {
+  const balStr = $('#sBal').value.trim(), habitStr = $('#sHabit').value.trim(), marginStr = $('#sMargin').value.trim();
+  if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0)) || (marginStr && !(parseNum(marginStr) >= 0))) {
     $('#setErr').textContent = 'Controlla i valori inseriti'; return;
   }
-  const body = { salary, salary_day: day, habit_monthly: habitStr ? parseNum(habitStr) : 0 };
+  const body = { salary, salary_day: day, habit_monthly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0 };
   if (balStr && balStr !== balPrefill) body.balance = parseNum(balStr);
   try {
     await api('settings', { method: 'PUT', body: JSON.stringify(body) });
@@ -686,7 +690,7 @@ function simulate(price, n, first) {
     const qq = p / cnt, ds = Array.from({ length: cnt }, (_, k) => addMonthsStr(start, k));
     const rows = goals.map((g) => {
       const cost = qq * ds.filter((x) => x <= g.date).length;
-      return { g, cost, margin: g.spendable - cost };
+      return { g, cost, margin: g.spendable - (data.settings.margin || 0) - cost };
     });
     return { qq, ds, rows, worst: rows.reduce((a, r) => (r.margin < a.margin ? r : a), rows[0]) };
   };
@@ -710,7 +714,7 @@ function simulate(price, n, first) {
     const bad = plan.rows.filter((r) => r.margin < 0);
     // Quando potrai: spostando l'acquisto oltre la scadenza degli obiettivi più stretti
     let when = '';
-    const maxNow = Math.max(0, Math.min(...goals.map((g) => g.spendable)));
+    const maxNow = Math.max(0, Math.min(...goals.map((g) => g.spendable - (data.settings.margin || 0))));
     const cands = goals.map((g) => addDaysISO(g.date, 1));
     let found = null;
     for (const s of cands) {

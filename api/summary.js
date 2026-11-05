@@ -11,7 +11,7 @@ export default handler(async (req, res) => {
 
   const [s] = await sql`
     SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
-           habit_monthly::float8 AS habit,
+           habit_monthly::float8 AS habit, safety_margin::float8 AS margin,
            balance_ref::float8 AS balance_ref,
            to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date
     FROM settings WHERE id = 1`;
@@ -142,11 +142,11 @@ export default handler(async (req, res) => {
       const A = base + futureIncome - recurringTotal - habitTotal - g.amount; // quanto puoi spendere in tutto fino alla data
       const n = Math.max(1, diffDays(s0, D));
       const L = Math.min(lp, n);
-      const perDay = A / n;
+      const perDay = (A - (s.margin || 0)) / n; // il margine di sicurezza resta fuori dal budget
       return {
         id: g.id, amount: g.amount, date: D, balance, expired: false,
         feasible: A >= 0, spendable: A, perDay, income: futureIncome, bonus: futBonus,
-        paydays, days: n, need: g.amount - base, recurring: recurringTotal, habit: habitTotal, budget: perDay * L,
+        paydays, days: n, need: g.amount - base, recurring: recurringTotal, habit: habitTotal, budget: perDay * L, margin: s.margin || 0,
       };
     });
     // L'obiettivo che stringe di più decide il budget del periodo
@@ -191,7 +191,7 @@ export default handler(async (req, res) => {
 
   res.status(200).json({
     today,
-    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit },
+    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, margin: s.margin },
     period: p,
     totals: {
       income: s.salary + extra + arrivedBonus,

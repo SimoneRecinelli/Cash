@@ -6,7 +6,7 @@ export default handler(async (req, res) => {
   if (req.method === 'GET') {
     const [s] = await sql`
       SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
-             habit_monthly::float8 AS habit_monthly
+             habit_monthly::float8 AS habit_monthly, safety_margin::float8 AS safety_margin
       FROM settings WHERE id = 1`;
     return res.status(200).json(s);
   }
@@ -15,6 +15,7 @@ export default handler(async (req, res) => {
     const b = req.body && typeof req.body === 'object' ? req.body : {};
     const salary = Number(b.salary);
     const day = Number(b.salary_day);
+    const margin = b.safety_margin === undefined || b.safety_margin === '' || b.safety_margin === null ? 0 : Number(b.safety_margin);
     const habit = b.habit_monthly === undefined || b.habit_monthly === '' || b.habit_monthly === null ? 0 : Number(b.habit_monthly);
     const hasBalance = b.balance !== undefined && b.balance !== null && b.balance !== '';
     const balance = hasBalance ? Number(b.balance) : null;
@@ -24,6 +25,9 @@ export default handler(async (req, res) => {
     }
     if (!Number.isFinite(habit) || habit < 0 || habit > 10_000_000) {
       return res.status(400).json({ error: 'Spesa abituale non valida' });
+    }
+    if (!Number.isFinite(margin) || margin < 0 || margin > 10_000_000) {
+      return res.status(400).json({ error: 'Margine di sicurezza non valido' });
     }
     if (!Number.isInteger(day) || day < 1 || day > 31) {
       return res.status(400).json({ error: 'Giorno non valido (1-31)' });
@@ -35,7 +39,8 @@ export default handler(async (req, res) => {
       UPDATE settings
       SET salary = ${Math.round(salary * 100) / 100},
           salary_day = ${day},
-          habit_monthly = ${Math.round(habit * 100) / 100}
+          habit_monthly = ${Math.round(habit * 100) / 100},
+          safety_margin = ${Math.round(margin * 100) / 100}
       WHERE id = 1`;
     if (hasBalance) {
       await sql`UPDATE settings SET balance_ref = ${Math.round(balance * 100) / 100}, balance_set_at = now() WHERE id = 1`;
