@@ -177,7 +177,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 header { align-items: flex-end; }
 header h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
 header .period { font-size: 13px; color: var(--muted); margin-top: 2px; }
-.tab { display: none; } .tab.on { display: block; }
+.tab { display: none; } .tab.on { display: block; animation: tabin .22s ease-out; }
+@keyframes tabin { from { opacity: 0; transform: translateX(calc(var(--dir, 0) * 28px)); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tab.on { animation: none; } }
 body { padding-bottom: calc(env(safe-area-inset-bottom) + 100px) !important; }
 .fab { left: auto; right: 16px; transform: none; bottom: calc(env(safe-area-inset-bottom) + 78px); height: 52px; padding: 0 22px; z-index: 5; }
 .fab[hidden] { display: none; }
@@ -1017,8 +1019,9 @@ $('#bonList').addEventListener('click', async (e) => {
 
 // ---- Schede (navigazione in basso) ----
 const TABS = { home: 'Home', mov: 'Movimenti', goals: 'Obiettivi', fixed: 'Fisse' };
-function go(name) {
+function go(name, dir = 0) {
   if (!TABS[name]) name = 'home';
+  document.documentElement.style.setProperty('--dir', dir);
   document.querySelectorAll('.tab').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + name));
   document.querySelectorAll('#tabbar [data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === name));
   $('#tabTitle').textContent = TABS[name];
@@ -1034,6 +1037,23 @@ $('#goalList').addEventListener('toggle', (e) => {
   const d = e.target.closest && e.target.closest('details.goal'); if (!d || !openGoals) return;
   d.open ? openGoals.add(d.dataset.id) : openGoals.delete(d.dataset.id);
 }, true);
+// Swipe a sinistra/destra per passare da una pagina all'altra (Home → Movimenti → Obiettivi → Fisse → Simula)
+const ORDER = ['home', 'mov', 'goals', 'fixed'];
+let swipe = null;
+document.addEventListener('touchstart', (e) => {
+  const t = e.touches[0];
+  if (e.touches.length !== 1 || !$('#backdrop').hidden || t.clientX < 24 || e.target.closest('input, textarea, select, .sheet')) { swipe = null; return; }
+  swipe = { x: t.clientX, y: t.clientY, at: Date.now() };
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, quick = Date.now() - swipe.at < 800;
+  swipe = null;
+  if (!quick || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+  const i = ORDER.findIndex((n) => $('#tab-' + n).classList.contains('on'));
+  if (dx < 0) { if (i < ORDER.length - 1) go(ORDER[i + 1], 1); else location.href = '/afford.html'; }
+  else if (i > 0) go(ORDER[i - 1], -1);
+}, { passive: true });
 window.addEventListener('hashchange', () => go(location.hash.slice(1)));
 go(location.hash.slice(1));
 

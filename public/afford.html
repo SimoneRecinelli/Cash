@@ -382,6 +382,20 @@ sync();
   catch (e) { $('#out').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+// Swipe verso destra: torna alla pagina Fisse
+let swipe = null;
+document.addEventListener('touchstart', (e) => {
+  const t = e.touches[0];
+  if (e.touches.length !== 1 || t.clientX < 24 || e.target.closest('input, textarea, select')) { swipe = null; return; }
+  swipe = { x: t.clientX, y: t.clientY, at: Date.now() };
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, quick = Date.now() - swipe.at < 800;
+  swipe = null;
+  if (quick && dx > 70 && dx > Math.abs(dy) * 1.6) location.href = '/#fixed';
+}, { passive: true });
 </script>
 </body>
 </html>
