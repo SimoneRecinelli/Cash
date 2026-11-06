@@ -1,5 +1,5 @@
 import {
-  handler, db, todayStr, period, diffDays, countSalaryDates, dueInPeriod,
+  handler, db, todayStr, period, diffDays, salaryDates, dueInPeriod,
   yearlyDates, monthlyCount, addDaysStr, nextOccurrence,
 } from './_lib.js';
 
@@ -20,7 +20,7 @@ export default handler(async (req, res) => {
   const today = todayStr();
   const p = period(today, s.salary_day);
 
-  const [transactions, recurring, bonuses, delta, goalRows] = await Promise.all([
+  const [transactions, recurring, bonuses, delta, goalRows, overrides] = await Promise.all([
     sql`SELECT id, type, amount::float8 AS amount, category, note,
                to_char(date, 'YYYY-MM-DD') AS date,
                (created_at > (SELECT balance_set_at FROM settings WHERE id = 1)) AS fresh
@@ -36,13 +36,18 @@ export default handler(async (req, res) => {
         FROM transactions
         WHERE created_at > (SELECT balance_set_at FROM settings WHERE id = 1)`,
     sql`SELECT id, amount::float8 AS amount, to_char(date, 'YYYY-MM-DD') AS date FROM goals ORDER BY date, id`,
+    sql`SELECT to_char(date, 'YYYY-MM-DD') AS date, amount::float8 AS amount FROM salary_overrides ORDER BY date`,
   ]);
+  // Stipendio di una data: quello indicato per quel mese, altrimenti lo standard
+  const ovr = new Map(overrides.map((o) => [o.date, o.amount]));
+  const salaryOf = (d) => (ovr.has(d) ? ovr.get(d) : s.salary);
+  const salarySum = (after, upto) => sum(salaryDates(after, upto, s.salary_day), salaryOf);
 
   // ---- Saldo stimato: saldo inserito + movimenti + stipendi e mensilità arrivati da allora ----
   let balance = null;
   if (s.balance_ref !== null && s.balance_date) {
     const bonusIn = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, s.balance_date, today).length);
-    balance = s.balance_ref + delta[0].d + countSalaryDates(s.balance_date, today, s.salary_day) * s.salary + bonusIn;
+    balance = s.balance_ref + delta[0].d + salarySum(s.balance_date, today) + bonusIn;
   }
 
   // ---- Modalità: con obiettivo (serve saldo + data futura) oppure semplice ----
@@ -137,9 +142,9 @@ export default handler(async (req, res) => {
     const lp = Math.max(1, diffDays(s0, p.end));
     goals = active.map((g) => {
       const D = g.date;
-      const paydays = countSalaryDates(s0, D, s.salary_day);
+      const paydays = salaryDates(s0, D, s.salary_day).length;
       const futBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, D).length);
-      const futureIncome = s.salary * paydays + futBonus;
+      const futureIncome = salarySum(s0, D) + futBonus;
       const recurringTotal = sum(recurring, (r) => {
         const from = r.starts && r.starts > s0 ? r.starts : s0;
         const to = r.until && r.until < D ? r.until : D;
@@ -169,7 +174,7 @@ export default handler(async (req, res) => {
       goal = { id: last.id, amount: last.amount, date: last.date, balance, expired: true };
       goals = goalRows.map((g) => ({ id: g.id, amount: g.amount, date: g.date, balance, expired: true }));
     }
-    budget = s.salary + extra + arrivedBonus - savings;
+    budget = salaryOf(p.start) + extra + arrivedBonus - savings;
     spentBar = spent;
     remaining = budget - spent - reserved;
   }
@@ -201,7 +206,7 @@ export default handler(async (req, res) => {
     settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, margin: s.margin, habit_left: leftSet ? s.habit_left : null },
     period: p,
     totals: {
-      income: s.salary + extra + arrivedBonus,
+      income: salaryOf(p.start) + extra + arrivedBonus,
       extra,
       bonus: arrivedBonus,
       spent,
@@ -219,6 +224,8 @@ export default handler(async (req, res) => {
     balance,
     goal,
     goals,
+    salaries: overrides.filter((o) => o.date >= p.start).map((o) => ({ ...o, standard: s.salary })),
+    nextPayday: p.end,
     recurring: rec,
     bonuses: bon,
     categories,

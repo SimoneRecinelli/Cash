@@ -65,6 +65,11 @@ function init() {
         amount numeric(12,2) NOT NULL CHECK (amount > 0),
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      await sql`CREATE TABLE IF NOT EXISTS salary_overrides (
+        date date PRIMARY KEY,
+        amount numeric(12,2) NOT NULL CHECK (amount >= 0),
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       await sql`CREATE TABLE IF NOT EXISTS recurring (
         id serial PRIMARY KEY,
         name text NOT NULL,
@@ -147,6 +152,20 @@ export function countSalaryDates(after, upto, day) {
     [y, m] = addMonths(y, m, 1);
   }
   return n;
+}
+
+// Date degli accrediti di stipendio in (after, upto].
+export function salaryDates(after, upto, day) {
+  const [ay, am] = after.split('-').map(Number);
+  const [uy, um] = upto.split('-').map(Number);
+  const out = [];
+  let [y, m] = [ay, am];
+  while (y * 12 + m <= uy * 12 + um) {
+    const d = fmt(y, m, Math.min(day, daysInMonth(y, m)));
+    if (d > after && d <= upto) out.push(d);
+    [y, m] = addMonths(y, m, 1);
+  }
+  return out;
 }
 
 export const addDaysStr = (s, n) => new Date(Date.parse(s) + n * 86400000).toISOString().slice(0, 10);

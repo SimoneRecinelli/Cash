@@ -187,6 +187,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <div class="sec"><h2>Tredicesima e altre mensilità</h2><button class="add-mini" id="btnAddBon" aria-label="Aggiungi mensilità">+</button></div>
   <div class="card" id="bonList"></div>
 
+  <div class="sec"><h2>Stipendi diversi dal solito</h2><button class="add-mini" id="btnAddSal" aria-label="Aggiungi stipendio diverso">+</button></div>
+  <div class="card" id="salList"></div>
+
   <h2>Movimenti</h2>
   <div class="card" id="list"><div class="empty">Caricamento…</div></div>
 </main>
@@ -286,6 +289,18 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <div class="hint">Con più obiettivi il budget segue quello che stringe di più.</div>
   <div class="err" id="goalErr"></div>
   <button class="primary" id="goalSave">Aggiungi</button>
+  <button class="link" data-close>Annulla</button>
+</section>
+
+<section class="sheet" id="salAddSheet" hidden>
+  <h3>Stipendio diverso dal solito</h3>
+  <label for="slAmount">Importo netto (€)</label>
+  <input id="slAmount" inputmode="decimal" placeholder="es. 1792,26">
+  <label for="slMonth">Per lo stipendio di</label>
+  <select id="slMonth"></select>
+  <div class="hint">Vale solo per quel mese, al posto dello stipendio standard. Lo conto quando arriva, nel giorno di stipendio impostato.</div>
+  <div class="err" id="salErr"></div>
+  <button class="primary" id="salSave">Salva</button>
   <button class="link" data-close>Annulla</button>
 </section>
 
@@ -474,6 +489,12 @@ function render(d) {
   }
 
   // mensilità aggiuntive
+  const sl = d.salaries || [];
+  $('#salList').innerHTML = !sl.length
+    ? '<div class="empty">Nessuno.<br>Se un mese lo stipendio è diverso dal solito, aggiungilo qui.</div>'
+    : sl.map((x) => `<button class="rec" data-date="${x.date}"><span class="mid"><div class="t1">${esc(new Date(x.date + 'T12:00:00').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }))}<span class="pill">${x.date <= d.today ? 'Arrivato' : 'In arrivo'}</span></div>
+        <div class="t2">invece di ${eur.format(x.standard)}</div></span>
+        <span class="amt num">${eur.format(x.amount)}</span></button>`).join('');
   const bn = d.bonuses;
   $('#bonList').innerHTML = !bn.length
     ? '<div class="empty">Nessuna mensilità aggiuntiva.<br>Aggiungi tredicesima, quattordicesima o premi: li conto quando arrivano.</div>'
@@ -644,6 +665,31 @@ $('#recDel').onclick = async () => {
 // ---- Mensilità aggiuntive ----
 $('#bMonth').innerHTML = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre']
   .map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+$('#btnAddSal').onclick = () => {
+  const months = [];
+  const base = (data.nextPayday || data.today).slice(0, 7) + '-01';
+  for (let k = -1; k < 5; k++) {
+    const [y, m] = base.split('-').map(Number), t = y * 12 + (m - 1) + k;
+    const iso = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-01`;
+    months.push(`<option value="${iso}">${new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}</option>`);
+  }
+  $('#slMonth').innerHTML = months.join(''); $('#slMonth').selectedIndex = 1;
+  $('#slAmount').value = ''; $('#salErr').textContent = '';
+  openSheet('salAddSheet');
+};
+$('#salSave').onclick = async () => {
+  const amount = parseNum($('#slAmount').value);
+  if (!(amount >= 0)) { $('#salErr').textContent = 'Inserisci l’importo'; return; }
+  try {
+    await api('salaries', { method: 'POST', body: JSON.stringify({ amount, date: $('#slMonth').value }) });
+    closeSheets(); toast('Salvato'); load();
+  } catch (e) { $('#salErr').textContent = e.message; }
+};
+$('#salList').addEventListener('click', async (e) => {
+  const b = e.target.closest('.rec'); if (!b || !confirm('Tornare allo stipendio standard per quel mese?')) return;
+  try { await api('salaries?date=' + b.dataset.date, { method: 'DELETE' }); toast('Ripristinato'); load(); }
+  catch (err) { alert(err.message); }
+});
 $('#btnAddBon').onclick = () => {
   ['#bName', '#bAmount', '#bDay'].forEach((i) => ($(i).value = ''));
   $('#bMonth').value = '12'; $('#bonErr').textContent = '';
