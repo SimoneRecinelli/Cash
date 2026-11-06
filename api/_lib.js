@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 const TZ = 'Europe/Rome';
 
@@ -80,6 +80,12 @@ function init() {
       )`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS starts date`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS until date`;
+      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS totp_last bigint`;
+      await sql`CREATE TABLE IF NOT EXISTS auth_fails (
+        ip text PRIMARY KEY,
+        fails int NOT NULL DEFAULT 0,
+        window_start timestamptz NOT NULL DEFAULT now()
+      )`;
     })().catch((e) => {
       ready = null;
       throw e;
@@ -88,23 +94,107 @@ function init() {
   return ready;
 }
 
-function authorized(req) {
-  const key = process.env.APP_KEY || '';
-  const got = String(req.headers['x-app-key'] || '');
-  const a = Buffer.from(got);
-  const b = Buffer.from(key);
-  return a.length === b.length && timingSafeEqual(a, b);
+// ---- Autenticazione ----
+const sha = (s) => createHash('sha256').update(String(s)).digest();
+const safeEq = (a, b) => timingSafeEqual(sha(a), sha(b)); // hash: stessa lunghezza, niente leak sulla lunghezza
+const SESSION_MS = 14 * 24 * 3600 * 1000;
+const MAX_FAILS = 8; // tentativi sbagliati per IP ...
+const WINDOW_MIN = 15; // ... ogni 15 minuti
+
+const sessionKey = () => sha(`sess|${process.env.APP_KEY || ''}|${process.env.TOTP_SECRET || ''}`);
+export function makeToken() {
+  const exp = String(Date.now() + SESSION_MS);
+  return `${exp}.${createHmac('sha256', sessionKey()).update(exp).digest('hex')}`;
+}
+function validToken(tok) {
+  const [exp, sig] = String(tok || '').split('.');
+  if (!exp || !sig || !(Number(exp) > Date.now())) return false;
+  const want = createHmac('sha256', sessionKey()).update(exp).digest('hex');
+  return safeEq(sig, want);
 }
 
-export function handler(fn) {
+export const clientIp = (req) =>
+  String(req.headers['x-real-ip'] || req.headers['x-vercel-forwarded-for'] || String(req.headers['x-forwarded-for'] || '').split(',')[0] || 'unknown').trim();
+
+export async function isLocked(ip) {
+  const [r] = await db()`SELECT fails FROM auth_fails WHERE ip = ${ip} AND window_start > now() - make_interval(mins => ${WINDOW_MIN})`;
+  return !!r && r.fails >= MAX_FAILS;
+}
+export async function recordFail(ip) {
+  await db()`INSERT INTO auth_fails (ip, fails, window_start) VALUES (${ip}, 1, now())
+    ON CONFLICT (ip) DO UPDATE SET
+      fails = CASE WHEN auth_fails.window_start > now() - make_interval(mins => ${WINDOW_MIN}) THEN auth_fails.fails + 1 ELSE 1 END,
+      window_start = CASE WHEN auth_fails.window_start > now() - make_interval(mins => ${WINDOW_MIN}) THEN auth_fails.window_start ELSE now() END`;
+}
+export async function clearFails(ip) {
+  await db()`DELETE FROM auth_fails WHERE ip = ${ip}`;
+}
+
+// ---- TOTP (RFC 6238, 6 cifre, 30 s) ----
+function b32decode(s) {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const c of String(s).toUpperCase().replace(/[^A-Z2-7]/g, '')) bits += A.indexOf(c).toString(2).padStart(5, '0');
+  const out = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) out.push(parseInt(bits.slice(i, i + 8), 2));
+  return Buffer.from(out);
+}
+function totpAt(secret, step) {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64BE(BigInt(step));
+  const h = createHmac('sha1', b32decode(secret)).update(buf).digest();
+  const o = h[h.length - 1] & 15;
+  const n = ((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3];
+  return String(n % 1_000_000).padStart(6, '0');
+}
+// Verifica il codice (±1 intervallo) e impedisce di riusarlo.
+export async function checkTotp(code) {
+  const secret = process.env.TOTP_SECRET;
+  if (!secret) return true;
+  const c = String(code || '').replace(/\s/g, '');
+  if (!/^\d{6}$/.test(c)) return false;
+  const now = Math.floor(Date.now() / 30000);
+  for (const step of [now, now - 1, now + 1]) {
+    if (safeEq(totpAt(secret, step), c)) {
+      const r = await db()`UPDATE settings SET totp_last = ${step} WHERE id = 1 AND (totp_last IS NULL OR totp_last < ${step}) RETURNING id`;
+      return r.length === 1;
+    }
+  }
+  return false;
+}
+
+// auth: 'session' (default, app) | 'ingest' (solo /api/ingest) | 'none' (login: se la gestisce da sé)
+function authorized(req, mode) {
+  const appKey = process.env.APP_KEY || '';
+  const hdrKey = String(req.headers['x-app-key'] || '');
+  if (mode === 'ingest') {
+    const ik = process.env.INGEST_KEY || '';
+    // Con INGEST_KEY impostata, la chiave principale NON apre più l'ingest
+    return ik ? safeEq(hdrKey, ik) : safeEq(hdrKey, appKey);
+  }
+  if (validToken(req.headers['x-session'])) return true;
+  // Compatibilità: senza 2FA configurata resta valida la chiave diretta
+  return !process.env.TOTP_SECRET && !!hdrKey && safeEq(hdrKey, appKey);
+}
+
+export function handler(fn, { auth = 'session' } = {}) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
       if (!process.env.APP_KEY) {
         return res.status(500).json({ error: 'APP_KEY non configurata su Vercel' });
       }
-      if (!authorized(req)) return res.status(401).json({ error: 'Chiave non valida' });
       await init();
+      const ip = clientIp(req);
+      if (await isLocked(ip)) {
+        res.setHeader('Retry-After', String(WINDOW_MIN * 60));
+        return res.status(429).json({ error: 'Troppi tentativi. Riprova tra qualche minuto.' });
+      }
+      if (auth !== 'none' && !authorized(req, auth)) {
+        await recordFail(ip);
+        return res.status(401).json({ error: 'Non autorizzato' });
+      }
+      req.ip = ip;
       await fn(req, res);
     } catch (e) {
       console.error(e);

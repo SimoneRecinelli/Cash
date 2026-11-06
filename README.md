@@ -74,3 +74,12 @@ si possono sempre correggere eliminando la voce e reinserendola.
     npm install
     cp .env.example .env   # compila i valori
     npx vercel dev
+
+
+## Sicurezza
+
+- **Accesso**: chiave `APP_KEY` + codice a 6 cifre (TOTP) se è impostata `TOTP_SECRET` su Vercel. Il login (`/api/login`) restituisce un token di sessione firmato valido 14 giorni; l'app salva solo quello, mai la chiave. Cambiare `APP_KEY` o `TOTP_SECRET` invalida tutte le sessioni.
+- **Ingest**: `/api/ingest` accetta solo `INGEST_KEY` (se impostata), che non apre nient'altro. Va messa nelle Script Properties di Apps Script al posto di `APP_KEY`.
+- **Blocco**: dopo 8 tentativi sbagliati da uno stesso IP, 15 minuti di blocco (HTTP 429).
+- **Header**: CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy in `vercel.json`.
+- Variabili Vercel: `DATABASE_URL`, `APP_KEY`, `INGEST_KEY`, `TOTP_SECRET`.

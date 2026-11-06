@@ -12,6 +12,7 @@ export default handler(async (req, res) => {
   const b = req.body;
   const text = typeof b === 'string' ? b : b && typeof b === 'object' ? b.text : '';
 
+  if (typeof text !== 'string' || text.length > 20000) return res.status(413).json({ error: 'Testo non valido' });
   const p = parseBankMessage(text);
   if (p.ignore) return res.status(200).json({ ok: true, ignored: true, reason: p.reason });
   if (p.error) return res.status(422).json({ error: p.error });
@@ -35,4 +36,4 @@ export default handler(async (req, res) => {
     merchant: p.merchant,
     category: p.category,
   });
-});
+}, { auth: 'ingest' });

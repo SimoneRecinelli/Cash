@@ -391,6 +391,8 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   <h3>Accesso</h3>
   <label for="kInput">Chiave dell'app (quella impostata come APP_KEY su Vercel)</label>
   <input id="kInput" type="password" autocomplete="current-password" autocapitalize="off">
+  <label for="kCode" style="margin-top:12px">Codice a 6 cifre (se hai attivato la verifica in due passaggi)</label>
+  <input id="kCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456">
   <div class="err" id="keyErr"></div>
   <button class="primary" id="kSave">Entra</button>
 </section>
@@ -415,9 +417,9 @@ let type = 'expense', cat = 'Spesa', data = null;
 async function api(path, opts = {}) {
   const r = await fetch('/api/' + path, {
     ...opts,
-    headers: { 'content-type': 'application/json', 'x-app-key': KEY },
+    headers: { 'content-type': 'application/json', 'x-session': KEY },
   });
-  if (r.status === 401) { openSheet('keySheet'); throw new Error('Non autorizzato'); }
+  if (r.status === 401) { KEY = ''; try { localStorage.removeItem('appkey'); } catch (e) {} openSheet('keySheet'); throw new Error('Non autorizzato'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Errore di rete');
   return j;
@@ -714,7 +716,7 @@ $('#setSave').onclick = async () => {
     closeSheets(); toast('Salvato'); load();
   } catch (e) { $('#setErr').textContent = e.message; }
 };
-$('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); } catch (e) {} KEY = ''; $('#kInput').value = ''; openSheet('keySheet'); };
+$('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); } catch (e) {} KEY = ''; $('#kInput').value = ''; $('#kCode').value = ''; openSheet('keySheet'); };
 
 // ---- Spese ricorrenti ----
 let recSel = null, recEditId = null;
@@ -843,10 +845,19 @@ go(location.hash.slice(1));
 
 // ---- Chiave ----
 $('#kSave').onclick = async () => {
-  KEY = $('#kInput').value;
-  try { await api('summary'); localStorage.setItem('appkey', KEY); closeSheets(); load(); }
-  catch (e) { $('#keyErr').textContent = e.message === 'Non autorizzato' ? 'Chiave non valida' : e.message; }
+  $('#keyErr').textContent = '';
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key: $('#kInput').value, code: $('#kCode').value }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Errore di rete');
+    KEY = j.token;
+    try { localStorage.setItem('appkey', KEY); } catch (e) {}
+    $('#kInput').value = ''; $('#kCode').value = '';
+    closeSheets(); load();
+  } catch (e) { $('#keyErr').textContent = e.message; }
 };
+$('#kCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#kSave').click(); });
 $('#kInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#kSave').click(); });
 
 // ---- Avvio ----
