@@ -98,6 +98,8 @@ select { width: 100%; font-size: 16px; padding: 12px 14px; border-radius: 12px; 
 .rec .t1 { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec .t2 { font-size: 12px; color: var(--muted); }
 .rec .amt { font-weight: 600; font-size: 15px; }
+.chkrow { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; font-size: 14px; color: var(--ink); }
+.chkrow input { width: 20px; height: 20px; margin: 0; flex: none; }
 .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; margin-left: 6px;
   background: var(--track); color: var(--muted); vertical-align: 1px; }
 .pill.ok { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
@@ -148,6 +150,27 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .link { background: none; border: 0; color: var(--muted); font: 500 14px inherit; padding: 14px 0 0; cursor: pointer; width: 100%; }
 .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .err { color: var(--bad); font-size: 14px; margin-top: 10px; min-height: 1em; }
+.chartcard { padding: 14px 12px 12px; margin-bottom: 16px; }
+.chartcard .ct { font-size: 13px; font-weight: 600; color: var(--muted); padding: 0 4px 6px; }
+.chartcard svg { width: 100%; height: auto; display: block; }
+.chartcard text { fill: var(--muted); font-size: 11px; }
+.chartcard .grid { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 4px 0; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.legend i.h { border-top-color: var(--muted); }
+.legend i.o { width: 9px; height: 9px; border: 2px solid var(--ink); border-radius: 50%; }
+.row3 { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.row3:last-child { border-bottom: 0; }
+.row3 .sub { color: var(--muted); font-size: 12px; }
+.toast b { font-weight: 700; }
+.toast button { background: none; border: 0; color: inherit; font: 700 14px inherit; text-decoration: underline; margin-left: 14px; cursor: pointer; }
+.inb { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.inb:last-child { border-bottom: 0; }
+.inb .txt { margin-top: 4px; word-break: break-word; }
+.inb .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.inb .btn2 { padding: 10px; }
+.inbcard { display: flex; justify-content: space-between; align-items: center; width: 100%; border: 0; text-align: left; padding: 14px 16px; margin-bottom: 16px; font: inherit; color: var(--ink); cursor: pointer; border-left: 4px solid var(--warn); }
+.inbmsg { font-size: 12px; color: var(--muted); background: var(--bg); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; word-break: break-word; max-height: 90px; overflow: auto; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 90px);
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: 14px; z-index: 20; }
 
@@ -204,6 +227,8 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   </header>
 
   <section class="tab on" id="tab-home">
+    <button class="card inbcard" id="homeBal" hidden><span><b>Controlla il saldo</b><div class="hint" id="homeBalSub" style="margin:2px 0 0"></div></span><span aria-hidden="true">›</span></button>
+    <button class="card inbcard" id="homeInbox" data-go="mov" hidden><span><b id="homeInboxN"></b><div class="hint" style="margin:2px 0 0">Messaggi della banca che non ho saputo registrare da solo</div></span><span aria-hidden="true">›</span></button>
     <section class="hero" id="hero" hidden>
       <div class="label" id="heroLabel">Ti restano da spendere</div>
       <div class="big num" id="remaining">–</div>
@@ -226,6 +251,10 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   </section>
 
   <section class="tab" id="tab-mov">
+    <div id="inboxWrap" hidden>
+      <h2>Da controllare</h2>
+      <div class="card" id="inboxList"></div>
+    </div>
     <div id="catsWrap" hidden>
       <h2>Per categoria</h2>
       <div class="card" id="cats"></div>
@@ -235,8 +264,15 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   </section>
 
   <section class="tab" id="tab-goals">
+    <div class="card chartcard" id="trajWrap" hidden><div class="ct">Percorso del saldo</div><div id="traj"></div><div class="legend" id="trajLeg"></div></div>
     <div class="sec"><h2>Obiettivi sul conto</h2><button class="add-mini" id="btnAddGoal" aria-label="Aggiungi obiettivo">+</button></div>
     <div id="goalList"></div>
+
+    <div class="sec"><h2>Controllo saldo</h2><button class="add-mini" id="btnCheck" aria-label="Controlla il saldo">✓</button></div>
+    <div class="card" id="checkList"></div>
+
+    <div class="sec"><h2>Mesi chiusi</h2></div>
+    <div class="card" id="closedList"></div>
   </section>
 
   <section class="tab" id="tab-fixed">
@@ -265,7 +301,8 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
 
 <!-- Aggiungi movimento -->
 <section class="sheet" id="addSheet" hidden>
-  <h3>Nuovo movimento</h3>
+  <h3 id="addTitle">Nuovo movimento</h3>
+  <div class="inbmsg" id="inbMsg" hidden></div>
   <div class="seg">
     <button type="button" id="segExp" class="on">Spesa</button>
     <button type="button" id="segInc">Entrata</button>
@@ -277,8 +314,22 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   <input id="fNote" maxlength="200" placeholder="es. Caffè con Marco" autocomplete="off">
   <label for="fDate">Data</label>
   <input id="fDate" type="date">
+  <label class="chkrow" id="rememberRow" hidden><input type="checkbox" id="fRemember"> Ricorda questa categoria per questo negozio</label>
   <div class="err" id="addErr"></div>
   <button class="primary" id="addSave">Aggiungi</button>
+  <button class="btn2 danger" id="txDel" style="margin-top:10px" hidden>Elimina movimento</button>
+  <button class="link" data-close>Annulla</button>
+</section>
+
+<!-- Controllo saldo -->
+<section class="sheet" id="balSheet" hidden>
+  <h3>Controllo saldo</h3>
+  <div class="hint" id="balExp" style="margin:0 0 10px"></div>
+  <label for="bAmount">Saldo reale sul conto adesso (€)</label>
+  <input id="bAmount" inputmode="decimal" placeholder="es. 10.200,00" autocomplete="off">
+  <div class="hint">Lo confronto con la mia stima, registro la differenza e allineo il saldo dell'app a quello reale.</div>
+  <div class="err" id="balErr"></div>
+  <button class="primary" id="balSave">Confronta e allinea</button>
   <button class="link" data-close>Annulla</button>
 </section>
 
@@ -317,8 +368,9 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   <input id="rName" maxlength="60" placeholder="es. Affitto, Netflix, Rata auto" autocomplete="off">
   <div class="row2">
     <div><label for="rAmount">Importo (€)</label><input id="rAmount" inputmode="decimal" placeholder="0,00"></div>
-    <div><label for="rDay">Giorno del mese</label><input id="rDay" inputmode="numeric" placeholder="es. 5"></div>
+    <div id="rDayBox"><label for="rDay">Giorno del mese</label><input id="rDay" inputmode="numeric" placeholder="es. 5"></div>
   </div>
+  <label class="chkrow"><input type="checkbox" id="rFlex"> Giorno variabile (una volta al mese, senza data fissa)</label>
   <label for="rMatch">Parola nell'e-mail (facoltativa)</label>
   <input id="rMatch" maxlength="60" placeholder="es. NETFLIX" autocomplete="off" autocapitalize="off">
   <div class="hint">Quando arriva un’e-mail di Intesa che contiene questa parola (e un importo simile), la spesa risulta verificata. Se vuoto uso il nome. Finché non arriva l’e-mail, l’importo resta riservato nel budget.</div>
@@ -338,7 +390,8 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   <div class="hint" id="recActInfo" style="margin:0 0 14px"></div>
   <div class="actions">
     <button class="btn2" id="recEdit">Modifica</button>
-    <button class="btn2" id="recPaid">Segna come pagata</button>
+    <button class="btn2" id="recPaid">Segna come pagata ora</button>
+    <button class="btn2" id="recPaidIn">È già nel saldo che ho inserito</button>
     <button class="btn2 danger" id="recDel">Elimina ricorrente</button>
   </div>
   <button class="link" data-close>Chiudi</button>
@@ -404,7 +457,12 @@ const eur0 = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR'
 const TZ = 'Europe/Rome';
 const todayLocal = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const parseNum = (v) => parseFloat(String(v).trim().replace(/\s/g, '').replace(',', '.'));
+const parseNum = (v) => {
+  let s = String(v).trim().replace(/\s/g, '');
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); // 10.340,40 → 10340.40
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); // 10.340 → 10340
+  return parseFloat(s);
+};
 const CATS = {
   expense: ['Spesa', 'Casa', 'Trasporti', 'Ristoranti', 'Svago', 'Salute', 'Abbonamenti', 'Shopping', 'Contanti', 'Altro'],
   income: ['Extra', 'Rimborso', 'Regalo', 'Altro'],
@@ -437,11 +495,17 @@ function closeSheets() {
 $('#backdrop').addEventListener('click', () => { if ($('#keySheet').hidden) closeSheets(); });
 document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheets));
 
-function toast(msg) {
+function toast(msg, act) {
   const t = document.createElement('div');
-  t.className = 'toast'; t.textContent = msg;
+  t.className = 'toast';
+  const s = document.createElement('span'); s.textContent = msg; t.appendChild(s);
+  if (act) {
+    const b = document.createElement('button'); b.textContent = act.label;
+    b.onclick = () => { t.remove(); act.fn(); };
+    t.appendChild(b);
+  }
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 1800);
+  setTimeout(() => t.remove(), act ? 6000 : 1800);
 }
 
 // ---- Render ----
@@ -545,6 +609,9 @@ function render(d) {
       </details>`;
     }).join('');
 
+  renderTrajectory(d);
+  renderChecks(d);
+
   // home: obiettivo che guida il budget
   const hg = d.goal && !d.goal.expired ? d.goal : null;
   $('#homeGoal').hidden = !hg;
@@ -559,13 +626,13 @@ function render(d) {
 
   // home: prossimi addebiti e accrediti
   const ups = [
-    ...d.recurring.filter((r) => r.status !== 'verified').map((r) => ({ name: r.name, date: r.due, amount: r.amount, inc: false, late: r.overdue })),
+    ...d.recurring.filter((r) => r.status !== 'verified').map((r) => ({ name: r.name, date: r.due, flex: r.flex && r.status === 'pending', amount: r.amount, inc: false, late: r.overdue })),
     ...d.bonuses.filter((b) => b.status === 'upcoming').map((b) => ({ name: b.name, date: b.date, amount: b.amount, inc: true })),
     ...(d.salaries || []).filter((x) => x.date > d.today).map((x) => ({ name: 'Stipendio', date: x.date, amount: x.amount, inc: true })),
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
   $('#homeUpcoming').innerHTML = ups.length
     ? ups.map((u) => `<button class="rec" data-go="fixed"><span class="mid"><div class="t1">${esc(u.name)}${u.late ? '<span class="pill late">Non vista</span>' : ''}</div>
-        <div class="t2">${esc(new Date(u.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
+        <div class="t2">${u.flex ? 'in arrivo questo mese' : esc(new Date(u.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
         <span class="amt num" style="color:${u.inc ? 'var(--good)' : 'inherit'}">${u.inc ? '+' : '−'}${eur.format(u.amount)}</span></button>`).join('') + '<button class="more" data-go="fixed">Tutte le fisse</button>'
     : '<div class="empty">Niente in arrivo.</div>';
 
@@ -581,6 +648,16 @@ function render(d) {
     }).join('') + '<button class="more" data-go="mov">Tutti i movimenti</button>'
     : '<div class="empty">Nessun movimento in questo periodo.<br>Tocca “+ Aggiungi” per iniziare.</div>';
 
+  // messaggi da controllare
+  const ib = d.inbox || [];
+  $('#inboxWrap').hidden = !ib.length;
+  $('#inboxList').innerHTML = ib.map((m) => `<div class="inb" data-id="${m.id}">
+    <div class="t1">${m.guess.amount != null ? eur.format(m.guess.amount) : 'Importo non trovato'} · ${esc(m.reason)}</div>
+    <div class="t2 txt">${esc(m.text.slice(0, 160))}</div>
+    <div class="acts"><button class="btn2 inbOk">Registra</button><button class="btn2 inbNo">Scarta</button></div></div>`).join('');
+  $('#homeInbox').hidden = !ib.length;
+  $('#homeInboxN').textContent = ib.length === 1 ? '1 messaggio da controllare' : ib.length + ' messaggi da controllare';
+
   // spese ricorrenti
   const rc = d.recurring;
   if (!rc.length) {
@@ -592,7 +669,7 @@ function render(d) {
       const pill = ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa e-mail</span>';
       const last = r.until ? ` · ultimo addebito ${shortDate(r.until)}` : '';
       return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
-        <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(last)}</div></span>
+        <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : r.flex && !sch ? 'giorno variabile · in arrivo questo mese' : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(r.flex && ok ? ' · giorno variabile' : '') + esc(last)}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
     }).join('') + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
   }
@@ -626,17 +703,17 @@ async function load() {
   catch (e) { if (e.message !== 'Non autorizzato') $('#list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 
-$('#list').addEventListener('click', async (e) => {
-  const b = e.target.closest('.tx');
-  if (!b) return;
-  if (!confirm('Eliminare questo movimento?')) return;
-  try { await api('transactions?id=' + b.dataset.id, { method: 'DELETE' }); toast('Eliminato'); load(); }
-  catch (err) { alert(err.message); }
+let editTx = null, inboxSel = null;
+$('#list').addEventListener('click', (e) => {
+  const b = e.target.closest('.tx'); if (!b) return;
+  const x = data.transactions.find((t) => String(t.id) === b.dataset.id); if (!x) return;
+  openAdd({ edit: x });
 });
 
 // ---- Aggiungi ----
 function renderChips() {
-  $('#fCats').innerHTML = CATS[type].map((c) => `<button type="button" class="chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+  const list = CATS[type].includes(cat) ? CATS[type] : [...CATS[type], cat];
+  $('#fCats').innerHTML = list.map((c) => `<button type="button" class="chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
 }
 function setType(t) {
   type = t; cat = CATS[t][0];
@@ -650,24 +727,71 @@ $('#fCats').addEventListener('click', (e) => {
   const c = e.target.closest('.chip'); if (!c) return;
   cat = c.dataset.c; renderChips();
 });
-$('#fab').onclick = () => {
-  setType('expense');
-  $('#fAmount').value = ''; $('#fNote').value = ''; $('#fDate').value = todayLocal(); $('#addErr').textContent = '';
+// Un solo foglio per tre usi: nuovo movimento, modifica, registrazione di un messaggio da controllare
+function openAdd({ edit = null, inbox = null } = {}) {
+  editTx = edit; inboxSel = inbox;
+  const base = edit || (inbox ? { ...inbox.guess, note: inbox.guess.merchant, date: inbox.date } : null);
+  setType(base ? base.type : 'expense');
+  if (base) { cat = base.category || CATS[type][0]; renderChips(); }
+  $('#addTitle').textContent = edit ? 'Modifica movimento' : inbox ? 'Registra dal messaggio' : 'Nuovo movimento';
+  $('#addSave').textContent = edit ? 'Salva' : 'Aggiungi';
+  $('#txDel').hidden = !edit;
+  $('#rememberRow').hidden = !edit; $('#fRemember').checked = false;
+  $('#inbMsg').hidden = !inbox; if (inbox) $('#inbMsg').textContent = inbox.text.slice(0, 400);
+  const amt = base && base.amount != null ? base.amount : '';
+  $('#fAmount').value = amt === '' ? '' : Number(amt).toFixed(2).replace('.', ',');
+  $('#fNote').value = base ? base.note || '' : '';
+  $('#fDate').value = base && base.date ? base.date : todayLocal();
+  $('#addErr').textContent = '';
   openSheet('addSheet');
-  setTimeout(() => $('#fAmount').focus(), 250);
-};
+  if (!edit) setTimeout(() => $('#fAmount').focus(), 250);
+}
+$('#fab').onclick = () => openAdd();
 $('#addSave').onclick = async () => {
   const amount = parseNum($('#fAmount').value);
   if (!(amount > 0)) { $('#addErr').textContent = 'Inserisci un importo valido'; return; }
+  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal() };
   $('#addSave').disabled = true;
   try {
-    await api('transactions', { method: 'POST', body: JSON.stringify({
-      type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal(),
-    }) });
-    closeSheets(); toast(type === 'expense' ? 'Spesa aggiunta' : 'Entrata aggiunta'); load();
+    if (editTx) {
+      await api('transactions?id=' + editTx.id, { method: 'PUT', body: JSON.stringify({ ...body, remember: $('#fRemember').checked }) });
+      toast($('#fRemember').checked ? 'Salvato, categoria ricordata' : 'Salvato');
+    } else if (inboxSel) {
+      await api('inbox', { method: 'POST', body: JSON.stringify({ ...body, id: inboxSel.id, action: 'confirm' }) });
+      toast('Registrato');
+    } else {
+      await api('transactions', { method: 'POST', body: JSON.stringify(body) });
+      toast(type === 'expense' ? 'Spesa aggiunta' : 'Entrata aggiunta');
+    }
+    closeSheets(); load();
   } catch (e) { $('#addErr').textContent = e.message; }
   finally { $('#addSave').disabled = false; }
 };
+$('#txDel').onclick = async () => {
+  const x = editTx; if (!x) return;
+  try {
+    await api('transactions?id=' + x.id, { method: 'DELETE' });
+    closeSheets(); load();
+    toast('Eliminato', { label: 'Annulla', fn: async () => {
+      try {
+        await api('transactions', { method: 'POST', body: JSON.stringify({ type: x.type, amount: x.amount, category: x.category, note: x.note, date: x.date, inBalance: x.fresh === false }) });
+        toast('Ripristinato'); load();
+      } catch (err) { alert(err.message); }
+    } });
+  } catch (err) { $('#addErr').textContent = err.message; }
+};
+
+// ---- Da controllare ----
+$('#inboxList').addEventListener('click', async (e) => {
+  const box = e.target.closest('.inb'); if (!box) return;
+  const m = (data.inbox || []).find((x) => String(x.id) === box.dataset.id); if (!m) return;
+  if (e.target.closest('.inbOk')) return openAdd({ inbox: m });
+  if (e.target.closest('.inbNo')) {
+    if (!confirm('Scartare questo messaggio?')) return;
+    try { await api('inbox', { method: 'POST', body: JSON.stringify({ id: m.id, action: 'dismiss' }) }); toast('Scartato'); load(); }
+    catch (err) { alert(err.message); }
+  }
+});
 
 // ---- Impostazioni ----
 let balPrefill = '';
@@ -718,11 +842,77 @@ $('#setSave').onclick = async () => {
 };
 $('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); } catch (e) {} KEY = ''; $('#kInput').value = ''; $('#kCode').value = ''; openSheet('keySheet'); };
 
+// ---- Percorso del saldo, controllo saldo, mesi chiusi ----
+const niceStep = (r) => { const e = 10 ** Math.floor(Math.log10(r)); const f = r / e; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e; };
+const fmtK = (v) => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0).replace('.', ',') + 'k' : String(Math.round(v)));
+const dd = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
+const monYY = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' }).replace(' ', '\u00a0');
+function renderTrajectory(d) {
+  const pr = d.projection || [];
+  const goals = (d.goals || []).filter((g) => !g.expired);
+  $('#trajWrap').hidden = pr.length < 2;
+  if (pr.length < 2) return;
+  const hist = d.history || [];
+  const W = 520, H = 230, L = 44, R = 16, T = 14, B = 28;
+  const t0 = hist.length && hist[0].date < pr[0].date ? hist[0].date : pr[0].date, t1 = pr[pr.length - 1].date;
+  const vals = [...pr.map((x) => x.balance), ...hist.map((x) => x.balance), ...goals.map((g) => g.amount)];
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * 0.08 || 100; lo -= pad; hi += pad;
+  const X = (iso) => L + (dd(t0, iso) / Math.max(1, dd(t0, t1))) * (W - L - R);
+  const Y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const step = niceStep((hi - lo) / 4);
+  let grid = '';
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${fmtK(v)}</text>`;
+  const line = (arr) => arr.map((p, i) => `${i ? 'L' : 'M'}${X(p.date).toFixed(1)},${Y(p.balance).toFixed(1)}`).join('');
+  const gaps = goals.map((g) => { const pt = pr.find((x) => x.date === g.date); return pt ? `<line x1="${X(g.date)}" x2="${X(g.date)}" y1="${Y(g.amount)}" y2="${Y(pt.balance)}" stroke="var(--accent)" stroke-width="3" opacity=".3" stroke-linecap="round"/>` : ''; }).join('');
+  const marks = goals.map((g) => `<circle cx="${X(g.date)}" cy="${Y(g.amount)}" r="4.5" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>`).join('');
+  const xl = goals.map((g) => `<text x="${X(g.date)}" y="${H - 8}" text-anchor="middle">${monYY(g.date)}</text>`).join('');
+  const histPath = hist.length > 1 ? `<path d="${line(hist)}" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+  $('#traj').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo previsto verso gli obiettivi">
+    ${grid}${gaps}<path d="${line(pr)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${histPath}${marks}${xl}</svg>`;
+  $('#trajLeg').innerHTML = `<span><i></i>Saldo previsto spendendo solo fisse e cene</span><span><i class="o"></i>Obiettivo</span>${hist.length > 1 ? '<span><i class="h"></i>Saldo registrato</span>' : ''}`;
+}
+function renderChecks(d) {
+  const bc = d.balanceCheck || { recent: [] }, sg = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + eur.format(Math.abs(n));
+  $('#checkList').innerHTML = bc.recent.length
+    ? bc.recent.map((c) => `<div class="row3"><span>${esc(shortDate(c.date))}<div class="sub">stimato ${eur0.format(c.expected)} · reale ${eur0.format(c.actual)}</div></span><b class="num" style="color:${Math.abs(c.diff) < 1 ? 'var(--good)' : 'var(--warn)'}">${Math.abs(c.diff) < 1 ? '✓ ' : ''}${sg(c.diff)}</b></div>`).join('')
+    : '<div class="empty">Nessun controllo ancora.<br>Una volta a settimana confronta il saldo reale con la mia stima: la differenza ti dice se manca qualche spesa.</div>';
+  $('#homeBal').hidden = !bc.due;
+  $('#homeBalSub').textContent = bc.due ? `Ultimo controllo ${bc.daysSince} giorni fa: il saldo reale è quello che stimo?` : '';
+  const tg = d.monthlyTarget;
+  $('#closedList').innerHTML = (d.closed || []).length
+    ? d.closed.map((c) => `<div class="row3"><span>${esc(shortDate(c.start))} – ${esc(shortDate(c.end))}<div class="sub">${eur0.format(c.from)} → ${eur0.format(c.to)}</div></span><b class="num" style="color:${tg && c.change >= tg ? 'var(--good)' : 'inherit'}">${tg && c.change >= tg ? '✓ ' : ''}${sg(c.change)}</b></div>`).join('') + (tg ? `<div class="recnote">Risparmio mensile richiesto dai tuoi obiettivi: <b class="num">${eur0.format(tg)}</b></div>` : '')
+    : '<div class="empty">Qui compaiono i mesi chiusi: quanto è cresciuto il saldo da uno stipendio al successivo.<br>Tengo una fotografia del saldo ogni giorno in cui apri l’app.</div>';
+}
+function openBalance() {
+  $('#balExp').textContent = data && data.balance != null ? `Il saldo che stimo adesso è ${eur.format(data.balance)}.` : 'Prima inserisci il saldo dalle impostazioni.';
+  $('#bAmount').value = ''; $('#balErr').textContent = '';
+  openSheet('balSheet');
+  setTimeout(() => $('#bAmount').focus(), 250);
+}
+$('#btnCheck').onclick = openBalance;
+$('#homeBal').onclick = openBalance;
+$('#balSave').onclick = async () => {
+  const v = parseNum($('#bAmount').value);
+  if (isNaN(v)) { $('#balErr').textContent = 'Inserisci il saldo del conto'; return; }
+  $('#balSave').disabled = true;
+  try {
+    const r = await api('balance', { method: 'POST', body: JSON.stringify({ actual: v }) });
+    closeSheets(); load();
+    const a = Math.abs(r.diff);
+    toast(a < 1 ? 'Saldo corretto ✓' : `Scostamento ${r.diff > 0 ? '+' : '−'}${eur.format(a)}: saldo allineato`);
+  } catch (e) { $('#balErr').textContent = e.message; }
+  finally { $('#balSave').disabled = false; }
+};
+
 // ---- Spese ricorrenti ----
 let recSel = null, recEditId = null;
+function syncFlex() { $('#rDayBox').hidden = $('#rFlex').checked; }
+$('#rFlex').onchange = syncFlex;
 $('#btnAddRec').onclick = () => {
   recEditId = null; $('#recTitle').textContent = 'Nuova spesa ricorrente';
   ['#rName', '#rAmount', '#rDay', '#rMatch', '#rStart', '#rUntil'].forEach((i) => ($(i).value = ''));
+  $('#rFlex').checked = false; syncFlex();
   $('#recErr').textContent = '';
   openSheet('recAddSheet');
 };
@@ -731,13 +921,14 @@ $('#recEdit').onclick = () => {
   recEditId = r.id; $('#recTitle').textContent = 'Modifica spesa ricorrente';
   $('#rName').value = r.name; $('#rAmount').value = String(r.amount).replace('.', ','); $('#rDay').value = r.day;
   $('#rMatch').value = r.match || ''; $('#rStart').value = r.starts || ''; $('#rUntil').value = r.until || '';
+  $('#rFlex').checked = !!r.flex; if (r.flex) $('#rDay').value = ''; syncFlex();
   $('#recErr').textContent = '';
   openSheet('recAddSheet');
 };
 $('#recSave').onclick = async () => {
-  const amount = parseNum($('#rAmount').value), day = parseInt($('#rDay').value, 10);
-  if (!$('#rName').value.trim() || !(amount > 0) || !(day >= 1 && day <= 31)) { $('#recErr').textContent = 'Inserisci nome, importo e giorno (1-31)'; return; }
-  const body = JSON.stringify({ name: $('#rName').value, amount, day, match: $('#rMatch').value, starts: $('#rStart').value || null, until: $('#rUntil').value || null });
+  const amount = parseNum($('#rAmount').value), flex = $('#rFlex').checked, day = flex ? 28 : parseInt($('#rDay').value, 10);
+  if (!$('#rName').value.trim() || !(amount > 0) || !(day >= 1 && day <= 31)) { $('#recErr').textContent = flex ? 'Inserisci nome e importo' : 'Inserisci nome, importo e giorno (1-31)'; return; }
+  const body = JSON.stringify({ name: $('#rName').value, amount, day, flex, match: $('#rMatch').value, starts: $('#rStart').value || null, until: $('#rUntil').value || null });
   try {
     await api(recEditId ? 'recurring?id=' + recEditId : 'recurring', { method: recEditId ? 'PUT' : 'POST', body });
     closeSheets(); toast(recEditId ? 'Modificata' : 'Ricorrente aggiunta'); load();
@@ -752,19 +943,22 @@ $('#recList').addEventListener('click', (e) => {
     : recSel.status === 'scheduled'
       ? 'Non ancora iniziata: la tengo già in conto nel piano verso l’obiettivo.'
       : 'Non ho ancora visto un’e-mail che la confermi: intanto l’importo resta riservato nel budget. Se l’e-mail ha un nome diverso, usa Modifica e metti la parola che compare nel messaggio.';
-  $('#recPaid').hidden = recSel.status !== 'pending';
+  $('#recPaid').hidden = recSel.status !== 'pending'; $('#recPaidIn').hidden = recSel.status !== 'pending';
   openSheet('recActSheet');
 });
-$('#recPaid').onclick = async () => {
+async function markPaid(inBalance) {
   const r = recSel; if (!r) return;
   const date = r.due <= todayLocal() ? r.due : todayLocal();
   try {
     await api('transactions', { method: 'POST', body: JSON.stringify({
-      type: 'expense', amount: r.amount, category: 'Altro', note: r.match && !r.name.toLowerCase().includes(r.match.toLowerCase()) ? `${r.name} (${r.match})` : r.name, date,
+      type: 'expense', amount: r.amount, category: 'Altro', inBalance,
+      note: r.match && !r.name.toLowerCase().includes(r.match.toLowerCase()) ? `${r.name} (${r.match})` : r.name, date,
     }) });
-    closeSheets(); toast('Registrata come pagata'); load();
+    closeSheets(); toast(inBalance ? 'Segnata: era già nel saldo' : 'Registrata come pagata'); load();
   } catch (e) { alert(e.message); }
-};
+}
+$('#recPaid').onclick = () => markPaid(false);
+$('#recPaidIn').onclick = () => markPaid(true);
 $('#recDel').onclick = async () => {
   if (!recSel || !confirm(`Eliminare “${recSel.name}”?`)) return;
   try { await api('recurring?id=' + recSel.id, { method: 'DELETE' }); closeSheets(); toast('Eliminata'); load(); }

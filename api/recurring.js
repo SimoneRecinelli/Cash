@@ -15,7 +15,8 @@ function parse(b) {
     name: String(b.name || '').trim().slice(0, 60),
     match: String(b.match || '').trim().slice(0, 60),
     amount: Number(b.amount),
-    day: Number(b.day),
+    flex: b.flex === true || b.flex === 'true',
+    day: b.flex === true || b.flex === 'true' ? 28 : Number(b.day),
     starts: b.starts || null,
     until: b.until || null,
   };
@@ -36,8 +37,8 @@ export default handler(async (req, res) => {
     const { v, error } = parse(req.body);
     if (error) return res.status(400).json({ error });
     const [row] = await sql`
-      INSERT INTO recurring (name, amount, day, match, starts, until)
-      VALUES (${v.name}, ${v.amount}, ${v.day}, ${v.match}, ${v.starts}::date, ${v.until}::date)
+      INSERT INTO recurring (name, amount, day, match, flex, starts, until)
+      VALUES (${v.name}, ${v.amount}, ${v.day}, ${v.match}, ${v.flex}, ${v.starts}::date, ${v.until}::date)
       RETURNING id`;
     return res.status(201).json({ id: row.id });
   }
@@ -49,7 +50,7 @@ export default handler(async (req, res) => {
     if (error) return res.status(400).json({ error });
     await sql`
       UPDATE recurring
-      SET name = ${v.name}, amount = ${v.amount}, day = ${v.day}, match = ${v.match},
+      SET name = ${v.name}, amount = ${v.amount}, day = ${v.day}, match = ${v.match}, flex = ${v.flex},
           starts = ${v.starts}::date, until = ${v.until}::date
       WHERE id = ${id}`;
     return res.status(200).json({ ok: true });

@@ -83,3 +83,17 @@ si possono sempre correggere eliminando la voce e reinserendola.
 - **Blocco**: dopo 8 tentativi sbagliati da uno stesso IP, 15 minuti di blocco (HTTP 429).
 - **Header**: CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy in `vercel.json`.
 - Variabili Vercel: `DATABASE_URL`, `APP_KEY`, `INGEST_KEY`, `TOTP_SECRET`.
+
+## Funzioni
+
+- **Obiettivi e budget**: più obiettivi sul conto, budget del periodo guidato da quello che stringe di più; margine di sicurezza e quota mensile di spese abituali (cene) fuori dal budget libero.
+- **Ricorrenti**: giorno fisso oppure variabile (una volta al mese, senza data prevista: mai "in ritardo"); riservate nel budget finché una mail della banca non le conferma. "Già nel saldo" registra un pagamento senza detrarlo di nuovo.
+- **Mail della banca** (Apps Script → `/api/ingest`): quello che il parser non capisce finisce in "Da controllare" (Movimenti) e lo registri o scarti a mano. Stipendi e operazioni fallite sono ignorati.
+- **Movimenti**: tocca per modificare o eliminare (con Annulla). "Ricorda questa categoria" crea una regola negozio → categoria, applicata alle mail successive.
+- **Controllo saldo**: confronta il saldo reale con la stima, registra lo scostamento e allinea. Home lo ricorda dopo 7 giorni.
+- **Percorso del saldo** verso gli obiettivi e **mesi chiusi** (variazione del saldo da stipendio a stipendio), da una fotografia giornaliera del saldo.
+- **Widget iPhone**: `/api/widget` (sola lettura, header `x-widget-key` = `WIDGET_KEY`). Script per Scriptable in `docs/scriptable-cash.js`.
+
+## Test
+
+`npm install && npm test` — 58 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.

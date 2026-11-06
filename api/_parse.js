@@ -69,3 +69,24 @@ export function parseBankMessage(raw) {
     category: type === 'income' ? 'Extra' : /prelie|prelev/i.test(text) ? 'Contanti' : guessCategory(merchant),
   };
 }
+
+// Proposta per un messaggio che il parser non ha registrato da solo (serve a precompilare il modulo)
+export function guessFromText(raw) {
+  const text = String(raw || '').split(/cordiali saluti|questo messaggio è stato inviato|il presente messaggio/i)[0].replace(/\s+/g, ' ').trim();
+  const type = INCOME_RE.test(text) && !SALARY_RE.test(text) ? 'income' : 'expense';
+  const merchant = (text.match(MERCHANT_RE)?.[1] || '').trim().slice(0, 60);
+  return {
+    type,
+    amount: parseAmount(text),
+    merchant,
+    category: type === 'income' ? 'Extra' : /prelie|prelev/i.test(text) ? 'Contanti' : guessCategory(merchant),
+  };
+}
+
+// Regole dell'utente: se il negozio contiene il testo di una regola, vince la sua categoria.
+export function applyRules(rules, merchant, fallback) {
+  const m = String(merchant || '').toLowerCase();
+  if (!m) return fallback;
+  const hit = rules.filter((r) => m.includes(r.pattern)).sort((a, b) => b.pattern.length - a.pattern.length)[0];
+  return hit ? hit.category : fallback;
+}

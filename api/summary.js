@@ -1,234 +1,29 @@
-import {
-  handler, db, todayStr, period, diffDays, salaryDates, dueInPeriod,
-  yearlyDates, monthlyCount, addDaysStr, nextOccurrence,
-} from './_lib.js';
-
-const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
+import { handler, diffDays } from './_lib.js';
+import { loadSummary, inboxList } from './_load.js';
 
 export default handler(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Metodo non consentito' });
-  const sql = db();
+  const { sql, s, today, result, history } = await loadSummary();
 
-  const [s] = await sql`
-    SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
-           habit_monthly::float8 AS habit, habit_left::float8 AS habit_left,
-           to_char(habit_left_for, 'YYYY-MM-DD') AS habit_left_for, safety_margin::float8 AS margin,
-           balance_ref::float8 AS balance_ref,
-           to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date
-    FROM settings WHERE id = 1`;
-
-  const today = todayStr();
-  const p = period(today, s.salary_day);
-
-  const [transactions, recurring, bonuses, delta, goalRows, overrides] = await Promise.all([
-    sql`SELECT id, type, amount::float8 AS amount, category, note,
-               to_char(date, 'YYYY-MM-DD') AS date,
-               (created_at > (SELECT balance_set_at FROM settings WHERE id = 1)) AS fresh
-        FROM transactions
-        WHERE date >= ${p.start}::date AND date < ${p.end}::date
-        ORDER BY date DESC, id DESC LIMIT 1000`,
-    sql`SELECT id, name, amount::float8 AS amount, day, match,
-               to_char(starts, 'YYYY-MM-DD') AS starts, to_char(until, 'YYYY-MM-DD') AS until
-        FROM recurring ORDER BY day, id`,
-    sql`SELECT id, name, month, day, amount::float8 AS amount FROM bonuses ORDER BY month, day, id`,
-    // Movimenti registrati dopo l'ultima volta in cui hai inserito il saldo
-    sql`SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0)::float8 AS d
-        FROM transactions
-        WHERE created_at > (SELECT balance_set_at FROM settings WHERE id = 1)`,
-    sql`SELECT id, amount::float8 AS amount, to_char(date, 'YYYY-MM-DD') AS date FROM goals ORDER BY date, id`,
-    sql`SELECT to_char(date, 'YYYY-MM-DD') AS date, amount::float8 AS amount FROM salary_overrides ORDER BY date`,
-  ]);
-  // Stipendio di una data: quello indicato per quel mese, altrimenti lo standard
-  const ovr = new Map(overrides.map((o) => [o.date, o.amount]));
-  const salaryOf = (d) => (ovr.has(d) ? ovr.get(d) : s.salary);
-  const salarySum = (after, upto) => sum(salaryDates(after, upto, s.salary_day), salaryOf);
-
-  // ---- Saldo stimato: saldo inserito + movimenti + stipendi e mensilità arrivati da allora ----
-  let balance = null;
-  if (s.balance_ref !== null && s.balance_date) {
-    const bonusIn = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, s.balance_date, today).length);
-    balance = s.balance_ref + delta[0].d + salarySum(s.balance_date, today) + bonusIn;
+  // Fotografia giornaliera del saldo stimato: serve per i grafici e per i mesi chiusi
+  if (result.balance !== null) {
+    const bal = Math.round(result.balance * 100) / 100;
+    await sql`INSERT INTO balance_history (date, balance) VALUES (${today}::date, ${bal})
+      ON CONFLICT (date) DO UPDATE SET balance = EXCLUDED.balance WHERE balance_history.balance <> EXCLUDED.balance`;
+    const i = history.findIndex((h) => h.date === today);
+    if (i >= 0) history[i].balance = bal; else history.push({ date: today, balance: bal });
   }
 
-  // ---- Modalità: con obiettivo (serve saldo + data futura) oppure semplice ----
-  const hasGoal = goalRows.length > 0 && balance !== null;
-  const active = hasGoal ? goalRows.filter((g) => g.date > today) : [];
-  const goalMode = active.length > 0;
-  // Se il saldo è stato inserito in questo periodo, si parte da quel momento (le spese prima sono già nel saldo).
-  const entry = goalMode && s.balance_date >= p.start;
-  const s0 = entry ? s.balance_date : p.start;
-  const afterB = entry ? s0 : addDaysStr(s0, -1); // le mensilità del giorno s0 contano solo nei periodi "normali"
-
-  const win = transactions.filter((x) => !entry || x.fresh);
-  const spent = sum(win.filter((x) => x.type === 'expense'), (x) => x.amount);
-  const extra = sum(win.filter((x) => x.type === 'income'), (x) => x.amount);
-  const spentToday = sum(win.filter((x) => x.type === 'expense' && x.date === today), (x) => x.amount);
-  // Spese abituali (es. cene): quota mensile attesa; le spese in "Ristoranti" la consumano
-  const habit = s.habit || 0;
-  // Quota di spese abituali del periodo corrente: indicata da te (cene ancora previste) oppure,
-  // se il saldo è stato inserito a metà periodo, la parte proporzionale ai giorni che restano.
-  const frac = entry ? diffDays(s0, p.end) / diffDays(p.start, p.end) : 1;
-  const leftSet = s.habit_left !== null && s.habit_left_for === p.start;
-  const curHabit = leftSet ? s.habit_left : habit * frac;
-  const habitSpent = Math.min(curHabit, sum(win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti'), (x) => x.amount));
-  const habitLeft = Math.max(0, curHabit - habitSpent);
-  const habitMonths = (from, D) => {
-    // mesi (frazionari) di periodo di stipendio compresi tra from e D
-    const first = period(from, s.salary_day);
-    let m = diffDays(from, D < first.end ? D : first.end) / diffDays(first.start, first.end);
-    let ps = first.end;
-    while (ps < D) {
-      const q = period(ps, s.salary_day);
-      m += diffDays(ps, D < q.end ? D : q.end) / diffDays(q.start, q.end);
-      ps = q.end;
-    }
-    return Math.max(0, m);
-  };
-  const arrivedBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, today).length);
-
-  // ---- Spese ricorrenti: "verificata" se un SMS/movimento la conferma, altrimenti riservata ----
-  const used = new Set();
-  const matched = [];
-  const rec = [];
-  for (const r of recurring) {
-    if (r.until && r.until < p.start) continue; // conclusa
-    const item = { id: r.id, name: r.name, amount: r.amount, day: r.day, match: r.match, starts: r.starts, until: r.until };
-    const dueNow = dueInPeriod(r.day, p.start, p.end);
-    if ((r.starts && dueNow < r.starts) || (r.until && dueNow > r.until)) {
-      // Non cade in questo periodo: se deve ancora iniziare la mostro come programmata
-      if (r.starts && r.starts > p.start) {
-        rec.push({ ...item, due: nextOccurrence(r.day, r.starts), status: 'scheduled', overdue: false, paid: null });
-      }
-      continue;
-    }
-    // Addebito di questo periodo caduto prima del saldo inserito: è già nel saldo, il prossimo è quello del periodo dopo
-    if (entry && dueNow < s0) {
-      rec.push({ ...item, due: nextOccurrence(r.day, s0), status: 'scheduled', overdue: false, paid: null });
-      continue;
-    }
-    const key = (r.match || r.name).toLowerCase();
-    const tol = Math.max(5, r.amount * 0.3);
-    let best = null;
-    for (const x of transactions) {
-      if (x.type !== 'expense' || used.has(x.id)) continue;
-      if (!`${x.note} ${x.category}`.toLowerCase().includes(key)) continue;
-      const diff = Math.abs(x.amount - r.amount);
-      if (diff <= tol && (!best || diff < best.diff)) best = { x, diff };
-    }
-    if (best) {
-      used.add(best.x.id);
-      matched.push({ amount: best.x.amount, date: best.x.date, inWin: !entry || best.x.fresh });
-    }
-    rec.push({
-      ...item,
-      due: dueNow,
-      status: best ? 'verified' : 'pending',
-      overdue: !best && dueNow < today,
-      paid: best ? { amount: best.x.amount, date: best.x.date } : null,
-    });
-  }
-  const reserved = sum(rec.filter((r) => r.status === 'pending' && (!goalMode || r.due >= s0)), (r) => r.amount);
-
-  // ---- Calcolo del budget del periodo ----
-  let remaining, budget, spentBar, goal = null, base = null;
-  let savings = s.savings_goal;
-
-  let goals = [];
-  if (goalMode) {
-    // Saldo a inizio finestra: non cambia se spendi o incassi dopo (così spendere riduce il budget 1:1)
-    base = balance + spent - extra - arrivedBonus;
-    const paidRec = sum(matched.filter((m) => m.inWin), (m) => m.amount);
-    spentBar = spent - paidRec - habitSpent;
-    const lp = Math.max(1, diffDays(s0, p.end));
-    goals = active.map((g) => {
-      const D = g.date;
-      const paydays = salaryDates(s0, D, s.salary_day).length;
-      const futBonus = sum(bonuses, (b) => b.amount * yearlyDates(b.month, b.day, afterB, D).length);
-      const futureIncome = salarySum(s0, D) + futBonus;
-      const recurringTotal = sum(recurring, (r) => {
-        const from = r.starts && r.starts > s0 ? r.starts : s0;
-        const to = r.until && r.until < D ? r.until : D;
-        return from > to ? 0 : r.amount * monthlyCount(r.day, from, to);
-      });
-      const habitTotal = D <= p.end ? curHabit * (diffDays(s0, D) / Math.max(1, diffDays(s0, p.end))) : curHabit + habit * habitMonths(p.end, D);
-      const A = base + futureIncome - recurringTotal - habitTotal - g.amount; // quanto puoi spendere in tutto fino alla data
-      const n = Math.max(1, diffDays(s0, D));
-      const L = Math.min(lp, n);
-      const perDay = (A - (s.margin || 0)) / n; // il margine di sicurezza resta fuori dal budget
-      return {
-        id: g.id, amount: g.amount, date: D, balance, expired: false,
-        feasible: A >= 0, spendable: A, perDay, income: futureIncome, bonus: futBonus,
-        paydays, days: n, need: g.amount - base, recurring: recurringTotal, habit: habitTotal, budget: perDay * L, margin: s.margin || 0,
-      };
-    });
-    // L'obiettivo che stringe di più decide il budget del periodo
-    const bind = goals.reduce((m, g) => (g.budget < m.budget ? g : m), goals[0]);
-    bind.binding = true;
-    goal = bind;
-    budget = bind.budget;
-    remaining = budget + extra - spentBar;
-    savings = 0;
-  } else {
-    if (hasGoal) {
-      const last = goalRows[goalRows.length - 1];
-      goal = { id: last.id, amount: last.amount, date: last.date, balance, expired: true };
-      goals = goalRows.map((g) => ({ id: g.id, amount: g.amount, date: g.date, balance, expired: true }));
-    }
-    budget = salaryOf(p.start) + extra + arrivedBonus - savings;
-    spentBar = spent;
-    remaining = budget - spent - reserved;
-  }
-
-  const dl = Math.max(p.daysLeft, 1);
-  const paidRecToday = goalMode ? sum(matched.filter((m) => m.inWin && m.date === today), (m) => m.amount) : 0;
-  const spentTodayFree = spentToday - paidRecToday;
-  const perDayNow = Math.max(0, (remaining + spentTodayFree) / dl);
-  const todayLeft = (remaining + spentTodayFree) / dl - spentTodayFree;
-
-  // ---- Mensilità aggiuntive: arrivata in questo periodo oppure prossima data ----
-  const bon = bonuses.map((b) => {
-    const arrived = yearlyDates(b.month, b.day, addDaysStr(p.start, -1), today)[0];
-    const next = yearlyDates(b.month, b.day, today, addDaysStr(today, 400))[0];
-    return {
-      id: b.id, name: b.name, month: b.month, day: b.day, amount: b.amount,
-      date: arrived || next, status: arrived ? 'arrived' : 'upcoming',
-    };
-  });
-
-  const catMap = new Map();
-  for (const x of transactions) {
-    if (x.type === 'expense') catMap.set(x.category, (catMap.get(x.category) || 0) + x.amount);
-  }
-  const categories = [...catMap].map(([category, total]) => ({ category, total })).sort((a, b) => b.total - a.total);
+  const checks = await sql`
+    SELECT to_char(created_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS date,
+           expected::float8 AS expected, actual::float8 AS actual, diff::float8 AS diff
+    FROM balance_checks ORDER BY id DESC LIMIT 6`;
+  const since = s.balance_date ? diffDays(s.balance_date, today) : null;
 
   res.status(200).json({
-    today,
-    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, margin: s.margin, habit_left: leftSet ? s.habit_left : null },
-    period: p,
-    totals: {
-      income: salaryOf(p.start) + extra + arrivedBonus,
-      extra,
-      bonus: arrivedBonus,
-      spent,
-      spentToday,
-      spentBar,
-      savings,
-      toGoal: goalMode ? Math.max(0, goal.amount - balance) : 0,
-      reserved,
-      habitLeft: goalMode ? habitLeft : 0,
-      budget,
-      remaining,
-      perDay: perDayNow,
-      todayLeft,
-    },
-    balance,
-    goal,
-    goals,
-    salaries: overrides.filter((o) => o.date >= p.start).map((o) => ({ ...o, standard: s.salary })),
-    nextPayday: p.end,
-    recurring: rec,
-    bonuses: bon,
-    categories,
-    transactions,
+    ...result,
+    inbox: await inboxList(sql),
+    history,
+    balanceCheck: { last: s.balance_date, daysSince: since, due: result.balance !== null && since !== null && since >= 7, recent: checks },
   });
 });

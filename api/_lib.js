@@ -4,6 +4,12 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 const TZ = 'Europe/Rome';
 
 let _sql;
+// Solo per i test: sostituisce il database con uno finto
+export function setDbForTests(fake) {
+  _sql = fake;
+  ready = Promise.resolve();
+}
+
 export function db() {
   if (!_sql) {
     if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL mancante');
@@ -80,6 +86,32 @@ function init() {
       )`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS starts date`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS until date`;
+      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS flex boolean NOT NULL DEFAULT false`;
+      await sql`CREATE TABLE IF NOT EXISTS inbox (
+        id serial PRIMARY KEY,
+        text text NOT NULL,
+        reason text NOT NULL DEFAULT '',
+        status text NOT NULL DEFAULT 'new' CHECK (status IN ('new','done','dismissed')),
+        raw_hash text UNIQUE,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS balance_checks (
+        id serial PRIMARY KEY,
+        expected numeric(14,2) NOT NULL,
+        actual numeric(14,2) NOT NULL,
+        diff numeric(14,2) NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS balance_history (
+        date date PRIMARY KEY,
+        balance numeric(14,2) NOT NULL
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS category_rules (
+        id serial PRIMARY KEY,
+        pattern text NOT NULL UNIQUE,
+        category text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS totp_last bigint`;
       await sql`CREATE TABLE IF NOT EXISTS auth_fails (
         ip text PRIMARY KEY,
@@ -163,10 +195,15 @@ export async function checkTotp(code) {
   return false;
 }
 
-// auth: 'session' (default, app) | 'ingest' (solo /api/ingest) | 'none' (login: se la gestisce da sé)
+// auth: 'session' (default, app) | 'ingest' (solo /api/ingest) | 'widget' (sola lettura) | 'none' (login: se la gestisce da sé)
 function authorized(req, mode) {
   const appKey = process.env.APP_KEY || '';
   const hdrKey = String(req.headers['x-app-key'] || '');
+  if (mode === 'widget') {
+    // Sola lettura per widget/notifiche: chiave propria, disattivata finché WIDGET_KEY non è impostata
+    const wk = process.env.WIDGET_KEY || '';
+    return !!wk && safeEq(String(req.headers['x-widget-key'] || ''), wk);
+  }
   if (mode === 'ingest') {
     const ik = process.env.INGEST_KEY || '';
     // Con INGEST_KEY impostata, la chiave principale NON apre più l'ingest
