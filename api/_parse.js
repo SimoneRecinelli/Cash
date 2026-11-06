@@ -43,7 +43,8 @@ export function guessCategory(merchant) {
 
 // → { ignore: true, reason } | { error } | { type, amount, merchant, category }
 export function parseBankMessage(raw) {
-  const text = String(raw || '').replace(/\s+/g, ' ').trim();
+  // Nelle e-mail conta solo il corpo: firma e avvertenze legali ("non autorizzata…") vanno scartate.
+  const text = String(raw || '').split(/cordiali saluti|questo messaggio è stato inviato|il presente messaggio/i)[0].replace(/\s+/g, ' ').trim();
   if (!text) return { error: 'Testo vuoto' };
 
   if (SALARY_RE.test(text)) return { ignore: true, reason: 'Stipendio: già contato dalle impostazioni' };
