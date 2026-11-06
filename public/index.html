@@ -254,9 +254,9 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
     <div><label for="rAmount">Importo (€)</label><input id="rAmount" inputmode="decimal" placeholder="0,00"></div>
     <div><label for="rDay">Giorno del mese</label><input id="rDay" inputmode="numeric" placeholder="es. 5"></div>
   </div>
-  <label for="rMatch">Parola nell'SMS (facoltativa)</label>
+  <label for="rMatch">Parola nell'e-mail (facoltativa)</label>
   <input id="rMatch" maxlength="60" placeholder="es. NETFLIX" autocomplete="off" autocapitalize="off">
-  <div class="hint">Quando arriva un SMS di Intesa che contiene questa parola (e un importo simile), la spesa risulta verificata. Se vuoto uso il nome. Finché non arriva l'SMS, l'importo resta riservato nel budget.</div>
+  <div class="hint">Quando arriva un’e-mail di Intesa che contiene questa parola (e un importo simile), la spesa risulta verificata. Se vuoto uso il nome. Finché non arriva l’e-mail, l’importo resta riservato nel budget.</div>
   <div class="row2">
     <div><label for="rStart">Dal (facoltativo)</label><input id="rStart" type="date"></div>
     <div><label for="rUntil">Ultimo addebito</label><input id="rUntil" type="date"></div>
@@ -475,12 +475,12 @@ function render(d) {
   // spese ricorrenti
   const rc = d.recurring;
   if (!rc.length) {
-    $('#recList').innerHTML = '<div class="empty">Nessuna spesa ricorrente.<br>Aggiungi affitto, abbonamenti, rate: le riservo nel budget finché l’SMS della banca non le conferma.</div>';
+    $('#recList').innerHTML = '<div class="empty">Nessuna spesa ricorrente.<br>Aggiungi affitto, abbonamenti, rate: le riservo nel budget finché l’e-mail della banca non le conferma.</div>';
   } else {
     $('#recList').innerHTML = rc.map((r) => {
       const ok = r.status === 'verified';
       const sch = r.status === 'scheduled';
-      const pill = ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa SMS</span>';
+      const pill = ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa e-mail</span>';
       const last = r.until ? ` · ultimo addebito ${shortDate(r.until)}` : '';
       return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
         <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(last)}</div></span>
@@ -642,7 +642,7 @@ $('#recList').addEventListener('click', (e) => {
     ? 'Confermata da un movimento registrato in questo periodo.'
     : recSel.status === 'scheduled'
       ? 'Non ancora iniziata: la tengo già in conto nel piano verso l’obiettivo.'
-      : 'Non ho ancora visto un SMS che la confermi: intanto l’importo resta riservato nel budget. Se l’SMS ha un nome diverso, usa Modifica e metti la parola che compare nel messaggio.';
+      : 'Non ho ancora visto un’e-mail che la confermi: intanto l’importo resta riservato nel budget. Se l’e-mail ha un nome diverso, usa Modifica e metti la parola che compare nel messaggio.';
   $('#recPaid').hidden = recSel.status !== 'pending';
   openSheet('recActSheet');
 });
