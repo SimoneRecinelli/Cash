@@ -5,8 +5,9 @@ const eq = (a, b) => timingSafeEqual(createHash('sha256').update(String(a)).dige
 
 // Accesso: chiave + codice a 6 cifre (se TOTP_SECRET è impostata) -> token di sessione (14 giorni).
 export default handler(async (req, res) => {
+  if (req.method === 'GET') return res.status(200).json({ twofa: !!process.env.TOTP_SECRET });
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Metodo non consentito' });
   }
   const b = req.body && typeof req.body === 'object' ? req.body : {};
