@@ -150,49 +150,114 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .err { color: var(--bad); font-size: 14px; margin-top: 10px; min-height: 1em; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 90px);
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: 14px; z-index: 20; }
+
+header { align-items: flex-end; }
+header h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+header .period { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.tab { display: none; } .tab.on { display: block; }
+body { padding-bottom: calc(env(safe-area-inset-bottom) + 100px) !important; }
+.fab { left: auto; right: 16px; transform: none; bottom: calc(env(safe-area-inset-bottom) + 78px); height: 52px; padding: 0 22px; z-index: 5; }
+.fab[hidden] { display: none; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--card); border-top: 1px solid var(--line); padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px); }
+.tabbar > * { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border: 0; background: none;
+  color: var(--muted); font: 600 11px -apple-system, system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.tabbar > .on { color: var(--accent); }
+.tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+details.goal { padding: 0; overflow: hidden; }
+details.goal > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; cursor: pointer; }
+details.goal > summary::-webkit-details-marker { display: none; }
+details.goal > summary::after { content: '›'; color: var(--muted); font-size: 22px; transform: rotate(90deg); transition: transform .15s; margin-left: 2px; }
+details.goal[open] > summary::after { transform: rotate(-90deg); }
+.gs-main { display: flex; flex-direction: column; min-width: 0; }
+.gs-main b { font-size: 17px; }
+.gs-sub { font-size: 12px; color: var(--muted); }
+.gs-right { margin-left: auto; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.gs-right .pill { margin-left: 0; }
+.gs-margin { font-size: 12px; color: var(--muted); }
+.gbody { padding: 0 16px 14px; }
+.gbody .bar { margin: 0 0 10px; height: 8px; }
+.gbody .g2 { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.gbody .g2 b { color: var(--ink); font-weight: 600; }
+.gbody .g3 { display: flex; justify-content: space-between; margin-top: 10px; }
+.gbody .g3 a { color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
+.pill.guide { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.homecard { display: block; width: 100%; text-align: left; border: 0; font: inherit; color: inherit; margin: 12px 0 0; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); cursor: pointer; }
+.homecard .k { font-size: 12px; color: var(--muted); }
+.homecard .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 16px; margin-top: 2px; }
+.homecard .bar { margin: 10px 0 8px; height: 8px; }
+.homecard .s { font-size: 13px; color: var(--muted); }
+.homecard .s b { color: var(--ink); }
+.homecard[hidden] { display: none; }
+.more { display: block; width: 100%; border: 0; background: none; color: var(--accent); font: 600 14px inherit; padding: 12px 0 2px; cursor: pointer; }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <h1 id="periodLabel">&nbsp;</h1>
+    <div>
+      <h1 id="tabTitle">Home</h1>
+      <div class="period" id="periodLabel">&nbsp;</div>
+    </div>
     <button class="icon-btn" id="btnSettings" aria-label="Impostazioni">⚙︎</button>
   </header>
 
-  <section class="hero" id="hero" hidden>
-    <div class="label" id="heroLabel">Ti restano da spendere</div>
-    <div class="big num" id="remaining">–</div>
-    <div class="sub" id="heroSub"></div>
-    <div class="bar"><i id="barFill"></i></div>
-    <div class="stats">
-      <div class="stat"><div class="k">Entrate</div><div class="v num" id="stIncome">–</div></div>
-      <div class="stat"><div class="k">Spese</div><div class="v num" id="stSpent">–</div></div>
-      <div class="stat"><div class="k" id="stSaveK">Da parte</div><div class="v num" id="stSave">–</div></div>
-    </div>
+  <section class="tab on" id="tab-home">
+    <section class="hero" id="hero" hidden>
+      <div class="label" id="heroLabel">Ti restano da spendere</div>
+      <div class="big num" id="remaining">–</div>
+      <div class="sub" id="heroSub"></div>
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="stats">
+        <div class="stat"><div class="k">Entrate</div><div class="v num" id="stIncome">–</div></div>
+        <div class="stat"><div class="k">Spese</div><div class="v num" id="stSpent">–</div></div>
+        <div class="stat"><div class="k" id="stSaveK">Da parte</div><div class="v num" id="stSave">–</div></div>
+      </div>
+    </section>
+
+    <button class="homecard" id="homeGoal" data-go="goals" hidden></button>
+
+    <h2>Prossimi addebiti e accrediti</h2>
+    <div class="card" id="homeUpcoming"></div>
+
+    <h2>Ultimi movimenti</h2>
+    <div class="card" id="homeRecent"></div>
   </section>
 
-  <a class="afford-btn" id="btnAfford" href="/afford.html">Posso permettermelo? <span>Simula un acquisto e guarda cosa succede ai tuoi obiettivi</span></a>
+  <section class="tab" id="tab-mov">
+    <div id="catsWrap" hidden>
+      <h2>Per categoria</h2>
+      <div class="card" id="cats"></div>
+    </div>
+    <h2>Movimenti</h2>
+    <div class="card" id="list"><div class="empty">Caricamento…</div></div>
+  </section>
 
-  <div class="sec"><h2>Obiettivi sul conto</h2><button class="add-mini" id="btnAddGoal" aria-label="Aggiungi obiettivo">+</button></div>
-  <div id="goalList"></div>
+  <section class="tab" id="tab-goals">
+    <div class="sec"><h2>Obiettivi sul conto</h2><button class="add-mini" id="btnAddGoal" aria-label="Aggiungi obiettivo">+</button></div>
+    <div id="goalList"></div>
+  </section>
 
-  <div id="catsWrap" hidden>
-    <h2>Per categoria</h2>
-    <div class="card" id="cats"></div>
-  </div>
+  <section class="tab" id="tab-fixed">
+    <div class="sec"><h2>Spese ricorrenti</h2><button class="add-mini" id="btnAddRec" aria-label="Aggiungi ricorrente">+</button></div>
+    <div class="card" id="recList"></div>
 
-  <div class="sec"><h2>Spese ricorrenti</h2><button class="add-mini" id="btnAddRec" aria-label="Aggiungi ricorrente">+</button></div>
-  <div class="card" id="recList"></div>
+    <div class="sec"><h2>Tredicesima e altre mensilità</h2><button class="add-mini" id="btnAddBon" aria-label="Aggiungi mensilità">+</button></div>
+    <div class="card" id="bonList"></div>
 
-  <div class="sec"><h2>Tredicesima e altre mensilità</h2><button class="add-mini" id="btnAddBon" aria-label="Aggiungi mensilità">+</button></div>
-  <div class="card" id="bonList"></div>
-
-  <div class="sec"><h2>Stipendi diversi dal solito</h2><button class="add-mini" id="btnAddSal" aria-label="Aggiungi stipendio diverso">+</button></div>
-  <div class="card" id="salList"></div>
-
-  <h2>Movimenti</h2>
-  <div class="card" id="list"><div class="empty">Caricamento…</div></div>
+    <div class="sec"><h2>Stipendi diversi dal solito</h2><button class="add-mini" id="btnAddSal" aria-label="Aggiungi stipendio diverso">+</button></div>
+    <div class="card" id="salList"></div>
+  </section>
 </main>
+
+<nav class="tabbar" id="tabbar">
+  <button data-go="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+  <button data-go="mov"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Movimenti</span></button>
+  <button data-go="goals"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span>Obiettivi</span></button>
+  <button data-go="fixed"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Fisse</span></button>
+  <a href="/afford.html"><svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></svg><span>Simula</span></a>
+</nav>
 
 <button class="fab" id="fab">+ Aggiungi</button>
 
@@ -387,10 +452,11 @@ function dayLabel(iso) {
   return new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+let openGoals = null;
 function render(d) {
   data = d;
   const { period: p, totals: t, settings: s } = d;
-  $('#periodLabel').textContent = `${shortDate(p.start)} → ${shortDate(p.end)}`;
+  $('#periodLabel').textContent = `Periodo ${shortDate(p.start)} → ${shortDate(p.end)}`;
   $('#hero').hidden = false;
 
   const ratio = t.budget > 0 ? t.remaining / t.budget : 0;
@@ -452,9 +518,10 @@ function render(d) {
   // obiettivi sul conto
   const full = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
   const m = (n) => `<b class="num">${eur0.format(n)}</b>`;
+  if (!openGoals) openGoals = new Set(d.goals.filter((g) => g.binding).map((g) => String(g.id)));
   $('#goalList').innerHTML = !d.goals.length
     ? '<div class="card"><div class="empty">Nessun obiettivo.<br>Aggiungi una cifra da raggiungere sul conto e una data: calcolo quanto puoi spendere.</div></div>'
-    : d.goals.map((g, i) => {
+    : d.goals.map((g) => {
       const gp = Math.max(0, Math.min(100, (d.balance / g.amount) * 100));
       const sal = g.paydays === 1 ? '1 stipendio' : `${g.paydays} stipendi`;
       const piu = g.bonus > 0 ? ` + mensilità extra ${eur0.format(g.bonus)}` : '';
@@ -463,14 +530,54 @@ function render(d) {
         : g.feasible
           ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra${g.habit > 0 ? ` (più ≈ ${m(g.habit)} di spese abituali)` : ''}: in tutto puoi spendere ≈ ${m(g.spendable)}.`
           : `Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
-      const tag = g.binding && d.goals.length > 1 ? ' <span class="muted">· guida il budget</span>' : '';
-      return `<div class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}">
-        <div class="g1"><b>${eur0.format(g.amount)} entro ${full(g.date)}${tag}</b>${i === 0 ? '<a class="goalSync">Aggiorna saldo</a>' : ''}</div>
-        <div class="bar"><i style="width:${gp}%"></i></div>
-        <div class="g2">Saldo stimato ${m(d.balance)}. ${txt}</div>
-        <div class="g2"><a class="goalDel" style="color:var(--accent);cursor:pointer">Elimina</a></div>
-      </div>`;
+      const mg = g.expired ? null : g.spendable - (g.margin || 0);
+      const pill = g.expired ? '<span class="pill">Scaduto</span>' : !g.feasible ? '<span class="pill late">Non ci arrivi</span>' : g.binding && d.goals.length > 1 ? '<span class="pill guide">Guida il budget</span>' : '<span class="pill ok">Regge</span>';
+      return `<details class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}"${openGoals.has(String(g.id)) ? ' open' : ''}>
+        <summary><span class="gs-main"><b>${eur0.format(g.amount)}</b><span class="gs-sub">entro ${full(g.date)}</span></span>
+          <span class="gs-right">${pill}${mg === null ? '' : `<span class="gs-margin">margine ${mg < 0 ? '−' : ''}${eur0.format(Math.abs(mg))}</span>`}</span></summary>
+        <div class="gbody">
+          <div class="bar"><i style="width:${gp}%"></i></div>
+          <div class="g2">Saldo stimato ${m(d.balance)}. ${txt}</div>
+          <div class="g3"><a class="goalSync">Aggiorna saldo</a><a class="goalDel" style="color:var(--bad)">Elimina</a></div>
+        </div>
+      </details>`;
     }).join('');
+
+  // home: obiettivo che guida il budget
+  const hg = d.goal && !d.goal.expired ? d.goal : null;
+  $('#homeGoal').hidden = !hg;
+  if (hg) {
+    const hp = Math.max(0, Math.min(100, (d.balance / hg.amount) * 100));
+    const hm = hg.spendable - (hg.margin || 0);
+    $('#homeGoal').innerHTML = `<div class="k">${d.goals.length > 1 ? 'Obiettivo che guida il budget' : 'Il tuo obiettivo'}</div>
+      <div class="t"><b>${eur0.format(hg.amount)}</b><span class="muted">entro ${full(hg.date)}</span></div>
+      <div class="bar"><i style="width:${hp}%"></i></div>
+      <div class="s">Saldo stimato ${m(d.balance)} · ${hg.feasible ? `margine ${m(Math.max(0, hm))}${hm < 0 ? ' (sotto la riserva)' : ''}` : `<b style="color:var(--bad)">non ci arrivi</b>`}${d.goals.length > 1 ? ` · ${d.goals.length} obiettivi` : ''}</div>`;
+  }
+
+  // home: prossimi addebiti e accrediti
+  const ups = [
+    ...d.recurring.filter((r) => r.status !== 'verified').map((r) => ({ name: r.name, date: r.due, amount: r.amount, inc: false, late: r.overdue })),
+    ...d.bonuses.filter((b) => b.status === 'upcoming').map((b) => ({ name: b.name, date: b.date, amount: b.amount, inc: true })),
+    ...(d.salaries || []).filter((x) => x.date > d.today).map((x) => ({ name: 'Stipendio', date: x.date, amount: x.amount, inc: true })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+  $('#homeUpcoming').innerHTML = ups.length
+    ? ups.map((u) => `<button class="rec" data-go="fixed"><span class="mid"><div class="t1">${esc(u.name)}${u.late ? '<span class="pill late">Non vista</span>' : ''}</div>
+        <div class="t2">${esc(new Date(u.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
+        <span class="amt num" style="color:${u.inc ? 'var(--good)' : 'inherit'}">${u.inc ? '+' : '−'}${eur.format(u.amount)}</span></button>`).join('') + '<button class="more" data-go="fixed">Tutte le fisse</button>'
+    : '<div class="empty">Niente in arrivo.</div>';
+
+  // home: ultimi movimenti
+  const rec4 = d.transactions.slice(0, 4);
+  $('#homeRecent').innerHTML = rec4.length
+    ? rec4.map((x) => {
+      const inc = x.type === 'income';
+      return `<button class="tx ${inc ? 'inc' : ''}" data-go="mov">
+        <span class="dot">${esc(x.category.slice(0, 2).toUpperCase())}</span>
+        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)} · ${esc(dayLabel(x.date))}</div></span>
+        <span class="amt num">${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
+    }).join('') + '<button class="more" data-go="mov">Tutti i movimenti</button>'
+    : '<div class="empty">Nessun movimento in questo periodo.<br>Tocca “+ Aggiungi” per iniziare.</div>';
 
   // spese ricorrenti
   const rc = d.recurring;
@@ -710,6 +817,29 @@ $('#bonList').addEventListener('click', async (e) => {
   try { await api('bonuses?id=' + x.id, { method: 'DELETE' }); toast('Eliminata'); load(); }
   catch (err) { alert(err.message); }
 });
+
+
+// ---- Schede (navigazione in basso) ----
+const TABS = { home: 'Home', mov: 'Movimenti', goals: 'Obiettivi', fixed: 'Fisse' };
+function go(name) {
+  if (!TABS[name]) name = 'home';
+  document.querySelectorAll('.tab').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + name));
+  document.querySelectorAll('#tabbar [data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === name));
+  $('#tabTitle').textContent = TABS[name];
+  $('#fab').hidden = !(name === 'home' || name === 'mov');
+  window.scrollTo(0, 0);
+  try { history.replaceState(null, '', '#' + name); } catch (e) {}
+}
+document.addEventListener('click', (e) => {
+  const g = e.target.closest('[data-go]');
+  if (g && !g.closest('.sheet')) go(g.dataset.go);
+});
+$('#goalList').addEventListener('toggle', (e) => {
+  const d = e.target.closest && e.target.closest('details.goal'); if (!d || !openGoals) return;
+  d.open ? openGoals.add(d.dataset.id) : openGoals.delete(d.dataset.id);
+}, true);
+window.addEventListener('hashchange', () => go(location.hash.slice(1)));
+go(location.hash.slice(1));
 
 // ---- Chiave ----
 $('#kSave').onclick = async () => {
