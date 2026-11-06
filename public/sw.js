@@ -1,4 +1,4 @@
-const CACHE = 'spese-v1';
+const CACHE = 'spese-v2';
 const ASSETS = ['/', '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {

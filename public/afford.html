@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Posso permettermelo?</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f766e">
+<style>
+:root {
+  --bg: #f5f5f0; --card: #ffffff; --ink: #14201d; --muted: #6b7773; --line: #e6e8e4;
+  --accent: #0f766e; --on-accent: #ffffff; --good: #0f766e; --warn: #b45309; --bad: #b91c1c;
+  --track: #e8ebe7; --shadow: 0 1px 2px rgba(20,32,29,.06), 0 8px 24px rgba(20,32,29,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c1210; --card: #141c19; --ink: #eef2f0; --muted: #8a9792; --line: #222d29;
+    --accent: #2dd4bf; --on-accent: #06201c; --good: #2dd4bf; --warn: #fbbf24; --bad: #f87171;
+    --track: #1f2a26; --shadow: none;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 40px);
+  -webkit-font-smoothing: antialiased;
+}
+main { max-width: 560px; margin: 0 auto; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+header { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+header a { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--card);
+  box-shadow: var(--shadow); color: var(--ink); text-decoration: none; font-size: 18px; flex: none; }
+header h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 24px 4px 10px; }
+.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 16px; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+label:first-child { margin-top: 0; }
+input, select { width: 100%; font: inherit; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink); min-width: 0; -webkit-appearance: none; appearance: none; }
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.row2 > div { min-width: 0; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.chip { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+.verdict { border-radius: 22px; padding: 20px; background: var(--card); box-shadow: var(--shadow); border-left: 6px solid var(--muted); }
+.verdict.ok { border-left-color: var(--good); } .verdict.warn { border-left-color: var(--warn); } .verdict.no { border-left-color: var(--bad); }
+.verdict .tag { font-size: 13px; color: var(--muted); }
+.verdict .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 4px 0 8px; }
+.verdict.ok .v { color: var(--good); } .verdict.warn .v { color: var(--warn); } .verdict.no .v { color: var(--bad); }
+.verdict p { margin: 0; font-size: 15px; }
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.kpi { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 12px 14px; }
+.kpi .k { font-size: 12px; color: var(--muted); }
+.kpi .n { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin-top: 2px; }
+.kpi .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi .n.bad { color: var(--bad); } .kpi .n.warn { color: var(--warn); } .kpi .n.good { color: var(--good); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { font: 11px -apple-system, system-ui, sans-serif; fill: var(--muted); }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .axis { stroke: var(--muted); stroke-width: 1; opacity: .5; }
+.caption { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+
+.bars { display: grid; gap: 14px; }
+.brow .top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 4px; }
+.brow .top b { font-weight: 600; }
+.brow .lane { position: relative; height: 22px; border-radius: 6px; background: var(--track); overflow: hidden; }
+.brow .lane .zero { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); opacity: .6; }
+.brow .lane i { position: absolute; top: 3px; height: 7px; border-radius: 4px; }
+.brow .lane i.before { background: var(--muted); opacity: .55; }
+.brow .lane i.after { top: 12px; background: var(--good); }
+.brow .lane i.after.neg { background: var(--bad); }
+.brow .foot { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 0 6px; }
+td { padding: 9px 0; border-top: 1px solid var(--line); }
+td.r, th.r { text-align: right; }
+.pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--track); color: var(--muted); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+
+.alt { display: grid; gap: 10px; }
+.alt > div { padding: 12px 14px; border-radius: 14px; background: var(--bg); font-size: 14px; }
+.alt b { font-weight: 600; }
+button.primary { width: 100%; margin-top: 14px; border: 0; border-radius: 14px; padding: 15px; background: var(--accent); color: var(--on-accent); font: 600 16px inherit; cursor: pointer; }
+button.ghost { background: var(--card); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 24px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <a href="/" aria-label="Indietro">‹</a>
+    <h1>Posso permettermelo?</h1>
+  </header>
+
+  <section class="card" id="form">
+    <label for="aName">Cosa compri (facoltativo)</label>
+    <input id="aName" maxlength="60" placeholder="es. iPad" autocomplete="off">
+    <label for="aPrice">Prezzo totale (€)</label>
+    <input id="aPrice" inputmode="decimal" placeholder="es. 764,49" autocomplete="off">
+    <div class="row2">
+      <div><label for="aN">Numero di rate</label><input id="aN" inputmode="numeric" placeholder="1 = in un colpo"></div>
+      <div><label for="aFirst">Prima rata</label>
+        <select id="aFirst"><option value="0">Oggi</option><option value="1">Tra un mese</option><option value="2">Tra 2 mesi</option><option value="3">Tra 3 mesi</option></select></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <div id="out"><div class="empty" id="hello">Inserisci un prezzo: ti mostro cosa succede ai tuoi obiettivi.</div></div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+const eur0 = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const parseNum = (v) => parseFloat(String(v).trim().replace(/\s/g, '').replace(',', '.'));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let KEY = '';
+try { KEY = localStorage.getItem('appkey') || ''; } catch (e) {}
+let data = null, lastSim = null;
+
+// ---- Date ----
+const DAY = 86400000;
+const t0 = (iso) => Date.parse(iso + 'T12:00:00Z');
+const isoOf = (ms) => new Date(ms).toISOString().slice(0, 10);
+const addDaysISO = (iso, k) => isoOf(t0(iso) + k * DAY);
+function addMonthsStr(iso, k) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = y * 12 + (m - 1) + k, ny = Math.floor(t / 12), nm = (t % 12) + 1;
+  const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
+  return `${ny}-${String(nm).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+const fmtD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+const fmtM = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
+
+// ---- Simulazione ----
+function plan(price, n, start) {
+  const goals = data.goals.filter((g) => !g.expired);
+  const q = price / n;
+  const dates = Array.from({ length: n }, (_, k) => addMonthsStr(start, k));
+  const margin = (data.settings && data.settings.margin) || 0;
+  const rows = goals.map((g) => {
+    const cost = q * dates.filter((x) => x <= g.date).length;
+    const before = g.spendable - margin;
+    return { g, cost, before, after: before - cost };
+  });
+  const worst = rows.length ? rows.reduce((a, r) => (r.after < a.after ? r : a), rows[0]) : null;
+  return { q, dates, rows, worst, margin };
+}
+
+function analyse(price, n, first) {
+  const today = data.today;
+  const start = addMonthsStr(today, first);
+  const p = plan(price, n, start);
+  const rem = Math.max(0, data.totals.remaining);
+  const habitLeft = data.totals.habitLeft || 0;
+  const nowCost = p.q * p.dates.filter((x) => x < data.period.end).length;
+  const hasGoals = p.rows.length > 0;
+  let level;
+  if (hasGoals) level = p.worst.after < 0 ? 'no' : nowCost > rem ? 'warn' : 'ok';
+  else level = nowCost > rem ? 'no' : 'ok';
+
+  // alternative
+  const alt = {};
+  if (hasGoals) {
+    const goals = p.rows.map((r) => r.g);
+    alt.maxNow = Math.max(0, Math.min(...goals.map((g) => g.spendable - p.margin)));
+    if (level === 'no') {
+      for (const g of goals) {
+        const s = addDaysISO(g.date, 1);
+        const p2 = plan(price, n, s);
+        const rest = p2.rows.filter((r) => r.g.date >= s);
+        if (!rest.length || rest.every((r) => r.after >= 0)) { alt.when = { s, last: !rest.length }; break; }
+      }
+      for (let c = n + 1; c <= 60; c++) {
+        if (plan(price, c, start).worst.after >= 0) { alt.rates = c; break; }
+      }
+    }
+  }
+  return { price, n, first, start, p, rem, habitLeft, nowCost, level, hasGoals, alt };
+}
+
+function niceStep(raw) {
+  const e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e;
+  return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * e;
+}
+
+// Margine a ogni scadenza: prima e dopo l'acquisto. Sotto lo zero l'obiettivo (più la tua riserva) non regge.
+function marginChart(r) {
+  const rows = r.p.rows;
+  const W = 520, H = 240, L = 54, R = 16, T = 16, B = 30;
+  const vals = rows.flatMap((x) => [x.before, x.after]);
+  let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+  const pad = (hi - lo) * 0.1 || 100; hi += pad; if (lo < 0) lo -= pad;
+  const n = rows.length;
+  const X = (i) => L + (n === 1 ? (W - L - R) / 2 : (i / (n - 1)) * (W - L - R));
+  const Y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const path = (k) => rows.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).join('');
+  const step = niceStep((hi - lo) / 4);
+  let grid = '';
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${eur0.format(Math.abs(v) < 1e-6 ? 0 : v).replace(/\s/g, '')}</text>`;
+  }
+  const xl = rows.map((x, i) => `<text x="${X(i)}" y="${H - 10}" text-anchor="middle">${fmtM(x.g.date).replace(' ', '\u00a0')}</text>`).join('');
+  const neg = lo < 0 ? `<rect x="${L}" y="${Y(0)}" width="${W - L - R}" height="${H - B - Y(0)}" fill="var(--bad)" opacity=".08"/>` : '';
+  const gaps = rows.map((x, i) => x.cost > 0 ? `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(x.before)}" y2="${Y(x.after)}" stroke="${x.after < 0 ? 'var(--bad)' : 'var(--accent)'}" stroke-width="3" opacity=".35" stroke-linecap="round"/>` : '').join('');
+  const dots = rows.map((x, i) => `<circle cx="${X(i)}" cy="${Y(x.before)}" r="3" fill="var(--muted)"/><circle cx="${X(i)}" cy="${Y(x.after)}" r="4.5" fill="${x.after < 0 ? 'var(--bad)' : 'var(--accent)'}"/>`).join('');
+  const lbl = rows.map((x, i) => (i === 0 || x.after < 0 ? `<text x="${X(i)}" y="${Y(x.after) + (x.after < 0 ? 18 : -9)}" text-anchor="${i === 0 ? 'start' : 'middle'}" style="fill:${x.after < 0 ? 'var(--bad)' : 'var(--accent)'};font-weight:600">${x.after < 0 ? '−' : ''}${eur0.format(Math.abs(x.after))}</text>` : '')).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Margine rispetto agli obiettivi, prima e dopo l’acquisto">
+    ${neg}${grid}<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--ink)" stroke-width="1.5" opacity=".6"/>
+    <text x="${W - R}" y="${Y(0) - 5}" text-anchor="end">obiettivo${r.p.margin ? ' + riserva' : ''}</text>
+    ${xl}${gaps}
+    <path d="${path('before')}" fill="none" stroke="var(--muted)" stroke-width="2" opacity=".7" stroke-linejoin="round"/>
+    <path d="${path('after')}" fill="none" stroke="${rows.some((x) => x.after < 0) ? 'var(--warn)' : 'var(--accent)'}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${lbl}
+  </svg>`;
+}
+
+function goalTable(r) {
+  return `<table><thead><tr><th>Obiettivo</th><th class="r">Prima</th><th class="r">Dopo</th><th class="r"></th></tr></thead><tbody>${r.p.rows.map((x) => {
+    const neg = x.after < 0;
+    return `<tr><td><b>${eur0.format(x.g.amount)}</b><div class="muted" style="font-size:12px">${fmtD(x.g.date)}</div></td>
+      <td class="r num">${eur0.format(x.before)}</td>
+      <td class="r num" style="font-weight:600;color:${neg ? 'var(--bad)' : 'var(--ink)'}">${neg ? '−' : ''}${eur0.format(Math.abs(x.after))}</td>
+      <td class="r">${neg ? '<span class="pill bad">non regge</span>' : x.cost > 0 ? '<span class="pill">tocca</span>' : '<span class="pill">libero</span>'}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function periodBar(r) {
+  const avail = r.rem, cost = r.nowCost;
+  const total = Math.max(avail, cost, 1);
+  const okPart = Math.min(cost, avail), over = Math.max(0, cost - avail);
+  return `<div style="display:flex;height:16px;border-radius:99px;overflow:hidden;background:var(--track)">
+    <i style="width:${(okPart / total) * 100}%;background:var(--accent)"></i><i style="width:${(over / total) * 100}%;background:var(--bad)"></i>
+    <i style="width:${((Math.max(0, avail - cost)) / total) * 100}%;background:var(--track)"></i></div>
+    <div class="caption" style="margin-top:8px">Disponibile fino al ${fmtD(data.period.end)}: <b class="num" style="color:var(--ink)">${eur0.format(avail)}</b>${r.habitLeft ? `, oltre ai ${eur0.format(r.habitLeft)} messi da parte per le cene` : ''}.
+    ${cost > 0 ? `Le rate di questo periodo: <b class="num" style="color:var(--ink)">${eur0.format(cost)}</b>${over > 0 ? ` — sfori di <b class="num" style="color:var(--bad)">${eur0.format(over)}</b>` : ''}.` : 'Nessuna rata cade in questo periodo.'}</div>`;
+}
+
+function render(r) {
+  const out = $('#out');
+  const name = $('#aName').value.trim();
+  const what = name ? esc(name) : 'L’acquisto';
+  const rate = r.n > 1 ? `${r.n} rate da ${eur.format(r.price / r.n)}` : `${eur.format(r.price)} in un colpo`;
+  let title, text;
+  const w = r.p.worst;
+  if (r.level === 'ok') {
+    title = 'Sì, puoi permettertelo';
+    text = r.hasGoals
+      ? `${what}, ${rate}: agli obiettivi restano ≈ <b class="num">${eur0.format(w.after)}</b> di margine${r.p.margin ? ' oltre alla tua riserva' : ''}. Il punto più stretto è l’obiettivo ${eur0.format(w.g.amount)} del ${fmtD(w.g.date)}.`
+      : `${what}, ${rate}: in questo periodo paghi ${eur.format(r.nowCost)} e ti restano ≈ ${eur0.format(r.rem - r.nowCost)}.`;
+  } else if (r.level === 'warn') {
+    title = 'Gli obiettivi reggono, ma sfori questo periodo';
+    text = `${what}, ${rate}: fino al prossimo stipendio paghi ${eur.format(r.nowCost)} ma hai a disposizione ≈ ${eur0.format(r.rem)}. Gli obiettivi reggono (margine ≈ <b class="num">${eur0.format(w.after)}</b>), però nei prossimi periodi avrai meno da spendere.`;
+  } else {
+    title = 'Meglio di no';
+    text = r.hasGoals
+      ? `${what}, ${rate}: l’obiettivo ${eur0.format(w.g.amount)} del ${fmtD(w.g.date)} finirebbe sotto di ≈ <b class="num">${eur0.format(-w.after)}</b>${r.p.margin ? ', contando la tua riserva' : ''}.`
+      : `${what}, ${rate}: in questo periodo pagheresti ${eur.format(r.nowCost)}, ma ti restano solo ≈ ${eur0.format(r.rem)}.`;
+  }
+  const kpi = (k, n, s, cls = '') => `<div class="kpi"><div class="k">${k}</div><div class="n num ${cls}">${n}</div><div class="s">${s}</div></div>`;
+  const remAfter = r.rem - r.nowCost;
+  const kpis = [
+    kpi('Costo totale', eur0.format(r.price), r.n > 1 ? `${r.n} × ${eur.format(r.price / r.n)}` : 'in un colpo'),
+    kpi('Questo periodo', `−${eur0.format(r.nowCost)}`, r.nowCost === 0 ? 'nessuna rata fino allo stipendio' : `ti restano ≈ ${eur0.format(Math.max(0, remAfter))}${remAfter < 0 ? ` (sfori di ${eur0.format(-remAfter)})` : ''}`, remAfter < 0 ? 'bad' : ''),
+  ];
+  if (r.hasGoals) {
+    kpis.push(kpi('Margine più stretto', `${w.after < 0 ? '−' : ''}${eur0.format(Math.abs(w.after))}`, `prima dell’acquisto ${eur0.format(w.before)}`, w.after < 0 ? 'bad' : w.after < 150 ? 'warn' : 'good'));
+    const hit = r.p.rows.filter((x) => x.cost > 0).length;
+    kpis.push(kpi('Obiettivi toccati', `${hit} su ${r.p.rows.length}`, r.p.rows.some((x) => x.after < 0) ? `${r.p.rows.filter((x) => x.after < 0).length} non reggono` : 'tutti reggono', r.p.rows.some((x) => x.after < 0) ? 'bad' : 'good'));
+  }
+  let html = `<div class="verdict ${r.level}" style="margin-top:14px"><div class="tag">${esc(name || 'Acquisto')} · ${rate}</div><div class="v">${title}</div><p>${text}</p></div>
+    <div class="kpis">${kpis.join('')}</div>`;
+
+  html += `<h2>Questo periodo</h2><div class="card">${periodBar(r)}</div>`;
+  if (r.hasGoals) {
+    html += `<h2>Margine a ogni scadenza</h2><div class="card">
+      <div class="legend"><span><i style="border-color:var(--muted)"></i>prima</span><span><i style="border-color:var(--accent)"></i>dopo l’acquisto</span><span><i style="border-color:var(--bad)"></i>sotto l’obiettivo</span></div>
+      ${marginChart(r)}
+      <p class="caption">Quanto ti avanza sopra ogni obiettivo${r.p.margin ? ' (oltre alla riserva)' : ''}, spendendo solo il necessario. Sotto la linea dello zero l’obiettivo non regge.</p></div>
+      <h2>Obiettivo per obiettivo</h2><div class="card">${goalTable(r)}</div>`;
+  }
+  // calendario rate
+  if (r.n > 1 || r.p.dates.length) {
+    const goals = r.p.rows.map((x) => x.g);
+    html += `<h2>Calendario dei pagamenti</h2><div class="card"><table><thead><tr><th>Data</th><th class="r">Importo</th><th class="r">Pesa su</th></tr></thead><tbody>${r.p.dates.map((d) => {
+      const n = goals.filter((g) => d <= g.date).length;
+      return `<tr><td>${fmtD(d)}${d < data.period.end ? ' <span class="pill">questo periodo</span>' : ''}</td><td class="r num">${eur.format(r.p.q)}</td><td class="r">${goals.length ? (n ? `${n} obiettiv${n === 1 ? 'o' : 'i'}` : '<span class="muted">nessuno</span>') : '–'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }
+  // alternative
+  const alts = [];
+  if (r.alt.when) alts.push(r.alt.when.last
+    ? `<div>📅 Puoi permettertelo <b>dopo il ${fmtD(addDaysISO(r.alt.when.s, -1))}</b>, quando non ci saranno più obiettivi da rispettare.</div>`
+    : `<div>📅 Puoi permettertelo <b>dal ${fmtD(r.alt.when.s)}</b>: da quel giorno gli obiettivi ancora aperti reggono (purché nel frattempo non spendi il loro margine).</div>`);
+  if (r.alt.rates) alts.push(`<div>🧾 Subito, in <b>${r.alt.rates} rate</b> da ${eur.format(r.price / r.alt.rates)} ci rientri.</div>`);
+  if (r.hasGoals && r.n === 1 && r.alt.maxNow != null) alts.push(`<div>💶 In un colpo, oggi, puoi arrivare a <b>${eur0.format(r.alt.maxNow)}</b> senza toccare gli obiettivi.</div>`);
+  if (r.level === 'warn') alts.push(`<div>⏳ Se la prima rata cade dopo il ${fmtD(r.p.dates[0] < data.period.end ? data.period.end : r.p.dates[0])}, non pesa su questo periodo: prova “Tra un mese”.</div>`);
+  if (alts.length) html += `<h2>Alternative</h2><div class="alt">${alts.join('')}</div>`;
+  if (r.n > 1) html += `<button class="primary ghost" id="aAdd">Aggiungi le rate alle spese ricorrenti</button>`;
+  out.innerHTML = html;
+  lastSim = r.n > 1 ? { q: r.price / r.n, n: r.n, dates: r.p.dates } : null;
+  const add = $('#aAdd');
+  if (add) add.onclick = addRecurring;
+}
+
+async function addRecurring() {
+  if (!lastSim) return;
+  const { q, n, dates } = lastSim, nm = $('#aName').value.trim();
+  try {
+    await api('recurring', { method: 'POST', body: JSON.stringify({
+      name: (nm || 'Rate acquisto').slice(0, 60), amount: Math.round(q * 100) / 100, day: Number(dates[0].slice(8, 10)),
+      match: nm.slice(0, 60), starts: dates[0], until: dates[n - 1],
+    }) });
+    const t = document.createElement('div'); t.className = 'toast'; t.textContent = 'Aggiunte alle ricorrenti';
+    document.body.appendChild(t); setTimeout(() => (location.href = '/'), 900);
+  } catch (e) { alert(e.message); }
+}
+
+function recompute() {
+  if (!data) return;
+  const price = parseNum($('#aPrice').value), n = $('#aN').value.trim() ? parseInt($('#aN').value, 10) : 1;
+  if (!(price > 0) || !(n >= 1 && n <= 120)) {
+    $('#out').innerHTML = '<div class="empty" id="hello">Inserisci un prezzo (e, se serve, le rate): ti mostro cosa succede ai tuoi obiettivi.</div>';
+    return;
+  }
+  render(analyse(price, n, parseInt($('#aFirst').value, 10)));
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch('/api/' + path, { ...opts, headers: { 'content-type': 'application/json', 'x-app-key': KEY } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(r.status === 401 ? 'Chiave non valida: apri prima l’app dalla Home' : j.error || 'Errore di rete');
+  return j;
+}
+
+const CHIPS = [1, 3, 6, 12, 24];
+$('#chips').innerHTML = CHIPS.map((c) => `<button type="button" class="chip" data-n="${c}">${c === 1 ? 'In un colpo' : c + ' rate'}</button>`).join('');
+$('#chips').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $('#aN').value = b.dataset.n === '1' ? '' : b.dataset.n; sync(); recompute();
+});
+function sync() {
+  const n = $('#aN').value.trim() ? parseInt($('#aN').value, 10) : 1;
+  document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', Number(c.dataset.n) === n));
+}
+['aPrice', 'aN', 'aName'].forEach((id) => $('#' + id).addEventListener('input', () => { sync(); recompute(); }));
+$('#aFirst').addEventListener('change', recompute);
+sync();
+
+(async () => {
+  if (!KEY) { $('#out').innerHTML = '<div class="empty">Apri prima l’app dalla Home e inserisci la chiave di accesso.</div>'; return; }
+  try { data = await api('summary'); recompute(); }
+  catch (e) { $('#out').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+})();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>

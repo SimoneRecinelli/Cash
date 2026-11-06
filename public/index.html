@@ -138,7 +138,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .primary { width: 100%; margin-top: 18px; border: 0; border-radius: 14px; padding: 15px; background: var(--accent);
   color: var(--on-accent); font: 600 16px inherit; cursor: pointer; }
 .primary:disabled { opacity: .6; }
-.afford-btn { display: block; width: 100%; margin: 12px 0 0; padding: 14px 16px; border-radius: 16px; border: 0; background: var(--card); box-shadow: var(--shadow); color: var(--accent); font: 600 15px inherit; text-align: left; cursor: pointer; }
+.afford-btn { display: block; text-decoration: none; width: 100%; margin: 12px 0 0; padding: 14px 16px; border-radius: 16px; border: 0; background: var(--card); box-shadow: var(--shadow); color: var(--accent); font: 600 15px inherit; text-align: left; cursor: pointer; }
 .afford-btn span { display: block; margin-top: 2px; font-weight: 400; font-size: 13px; color: var(--muted); }
 .aff-res { margin: 14px 0 0; padding: 14px; border-radius: 14px; background: var(--bg); font-size: 14px; line-height: 1.45; }
 .aff-res b.v { display: block; font-size: 17px; margin-bottom: 4px; }
@@ -171,7 +171,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
     </div>
   </section>
 
-  <button class="afford-btn" id="btnAfford">Posso permettermelo? <span>Simula un acquisto, anche a rate</span></button>
+  <a class="afford-btn" id="btnAfford" href="/afford.html">Posso permettermelo? <span>Simula un acquisto e guarda cosa succede ai tuoi obiettivi</span></a>
 
   <div class="sec"><h2>Obiettivi sul conto</h2><button class="add-mini" id="btnAddGoal" aria-label="Aggiungi obiettivo">+</button></div>
   <div id="goalList"></div>
@@ -277,23 +277,6 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 </section>
 
 <!-- Nuova mensilità aggiuntiva -->
-<section class="sheet" id="affSheet" hidden>
-  <h3>Posso permettermelo?</h3>
-  <label for="aName">Cosa compri (facoltativo)</label>
-  <input id="aName" maxlength="60" placeholder="es. iPad" autocomplete="off">
-  <label for="aPrice">Prezzo totale (€)</label>
-  <input id="aPrice" inputmode="decimal" placeholder="es. 800">
-  <div class="row2">
-    <div><label for="aN">Numero di rate</label><input id="aN" inputmode="numeric" placeholder="1 = in un colpo"></div>
-    <div><label for="aFirst">Prima rata</label>
-      <select id="aFirst"><option value="0">Oggi</option><option value="1">Tra un mese</option></select></div>
-  </div>
-  <div class="aff-res" id="aRes" hidden></div>
-  <button class="primary" id="aGo">Calcola</button>
-  <button class="primary" id="aAdd" hidden style="background:var(--card);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)">Aggiungi come spesa ricorrente</button>
-  <button class="link" data-close>Chiudi</button>
-</section>
-
 <section class="sheet" id="goalAddSheet" hidden>
   <h3>Nuovo obiettivo</h3>
   <div class="row2">
@@ -681,100 +664,6 @@ $('#bonList').addEventListener('click', async (e) => {
   try { await api('bonuses?id=' + x.id, { method: 'DELETE' }); toast('Eliminata'); load(); }
   catch (err) { alert(err.message); }
 });
-
-// ---- Posso permettermelo? ----
-function addMonthsStr(iso, k) {
-  const [y, m, d] = iso.split('-').map(Number);
-  const t = y * 12 + (m - 1) + k, ny = Math.floor(t / 12), nm = (t % 12) + 1;
-  const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
-  return `${ny}-${String(nm).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
-}
-let lastSim = null;
-function simulate(price, n, first) {
-  const q = price / n, today = data.today;
-  const startOf = (k) => addMonthsStr(today, k);
-  const fmtD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-  const goals = (data.goals || []).filter((g) => !g.expired);
-  const rate = n > 1 ? `${n} rate da ${eur.format(q)}` : eur.format(price);
-  const mk = (p, cnt, start) => {
-    const qq = p / cnt, ds = Array.from({ length: cnt }, (_, k) => addMonthsStr(start, k));
-    const rows = goals.map((g) => {
-      const cost = qq * ds.filter((x) => x <= g.date).length;
-      return { g, cost, margin: g.spendable - (data.settings.margin || 0) - cost };
-    });
-    return { qq, ds, rows, worst: rows.reduce((a, r) => (r.margin < a.margin ? r : a), rows[0]) };
-  };
-  const start0 = startOf(first);
-  const plan = mk(price, n, start0);
-  lastSim = n > 1 ? { q, n, dates: plan.ds } : null;
-
-  if (goals.length) {
-    const { ds, worst } = plan;
-    const lastD = goals[goals.length - 1].date;
-    const tail = ds.some((x) => x > lastD) ? `<br><span class="muted">Le rate dopo il ${fmtD(lastD)} non rientrano nel calcolo degli obiettivi.</span>` : '';
-    const nowCost = q * ds.filter((x) => x < data.period.end).length;
-    const rem = Math.max(0, data.totals.remaining);
-    const tight = `il punto più stretto è l’obiettivo ${eur0.format(worst.g.amount)} del ${fmtD(worst.g.date)}`;
-    if (worst.margin >= 0) {
-      if (nowCost <= rem) {
-        return { ok: true, html: `<b class="v">Sì, puoi permettertelo</b>${rate}: fino al prossimo stipendio paghi ${eur.format(nowCost)} e te ne restano ≈ <b class="num">${eur0.format(rem - nowCost)}</b>. Agli obiettivi restano ≈ <b class="num">${eur0.format(worst.margin)}</b> di margine (${tight}).${tail}` };
-      }
-      return { ok: false, warn: true, html: `<b class="v">Gli obiettivi reggono, ma sfori questo periodo</b>${rate}: fino al prossimo stipendio paghi ${eur.format(nowCost)}, ma te ne restano solo ≈ <b class="num">${eur0.format(rem)}</b> (sfori di ≈ <b class="num">${eur0.format(nowCost - rem)}</b>). Gli obiettivi reggono comunque, con ≈ <b class="num">${eur0.format(worst.margin)}</b> di margine (${tight}), ma nei prossimi periodi avrai meno da spendere.<br><span class="muted">Se la prima rata cade dopo il ${fmtD(data.period.end)}, non pesa su questo periodo.</span>${tail}` };
-    }
-    const bad = plan.rows.filter((r) => r.margin < 0);
-    // Quando potrai: spostando l'acquisto oltre la scadenza degli obiettivi più stretti
-    let when = '';
-    const maxNow = Math.max(0, Math.min(...goals.map((g) => g.spendable - (data.settings.margin || 0))));
-    const cands = goals.map((g) => addDaysISO(g.date, 1));
-    let found = null;
-    for (const s of cands) {
-      const p2 = mk(price, n, s);
-      const rest = p2.rows.filter((r) => r.g.date >= s);
-      if (!rest.length || rest.every((r) => r.margin >= 0)) { found = { s, last: !rest.length }; break; }
-    }
-    if (found) {
-      when = found.last
-        ? `<br>Potrai permettertelo dopo il ${fmtD(addDaysISO(found.s, -1))}, quando non ci saranno più obiettivi da rispettare.`
-        : `<br>Potrai permettertelo dal <b>${fmtD(found.s)}</b>: da quel giorno gli obiettivi ancora aperti reggono, purché nel frattempo tu non spenda il loro margine.`;
-    }
-    // Quante rate servono per rientrare subito
-    let moreRates = '';
-    if (n < 60) {
-      for (let c = n + 1; c <= 60; c++) {
-        const p2 = mk(price, c, start0);
-        if (p2.worst.margin >= 0) { moreRates = `<br>Oppure subito, in <b>${c} rate</b> da ${eur.format(price / c)}.`; break; }
-      }
-    }
-    const cap = n === 1 ? `<br>In un colpo, oggi, puoi arrivare a ≈ <b class="num">${eur0.format(maxNow)}</b>.` : '';
-    return { ok: false, html: `<b class="v">Meglio di no</b>${rate}: ${bad.length > 1 ? 'più obiettivi non reggerebbero' : 'un obiettivo non reggerebbe'}. Il più colpito è ${eur0.format(worst.g.amount)} entro ${fmtD(worst.g.date)}: finiresti sotto di ≈ <b class="num">${eur0.format(-worst.margin)}</b>, anche senza altre spese.${when}${moreRates}${cap}${tail}` };
-  }
-  const dates = plan.ds;
-  const inPeriod = dates.filter((x) => x < data.period.end).length;
-  const now = q * inPeriod, rem = data.totals.remaining;
-  if (now <= rem) return { ok: true, html: `<b class="v">Sì, puoi permettertelo</b>${rate}: in questo periodo pagheresti ${eur.format(now)} e ti restano ≈ <b class="num">${eur0.format(rem - now)}</b> da spendere fino allo stipendio.` };
-  return { ok: false, html: `<b class="v">Meglio di no</b>${rate}: in questo periodo pagheresti ${eur.format(now)}, ma ti restano solo ≈ <b class="num">${eur0.format(Math.max(0, rem))}</b>.<br>Se la prima rata cade dopo il ${fmtD(data.period.end)}, non pesa su questo periodo.` };
-}
-const addDaysISO = (iso, k) => new Date(Date.parse(iso + 'T12:00:00Z') + k * 86400000).toISOString().slice(0, 10);
-$('#btnAfford').onclick = () => { $('#aRes').hidden = true; $('#aAdd').hidden = true; lastSim = null; openSheet('affSheet'); };
-$('#aAdd').onclick = async () => {
-  if (!lastSim) return;
-  const { q, n, dates } = lastSim, name = $('#aName').value.trim() || 'Rate acquisto';
-  try {
-    await api('recurring', { method: 'POST', body: JSON.stringify({
-      name: name.slice(0, 60), amount: Math.round(q * 100) / 100, day: Number(dates[0].slice(8, 10)),
-      match: $('#aName').value.trim().slice(0, 60), starts: dates[0], until: dates[n - 1],
-    }) });
-    closeSheets(); toast('Aggiunta tra le ricorrenti'); load();
-  } catch (e) { alert(e.message); }
-};
-$('#aGo').onclick = () => {
-  const price = parseNum($('#aPrice').value), n = $('#aN').value.trim() ? parseInt($('#aN').value, 10) : 1;
-  const res = $('#aRes'); res.hidden = false;
-  if (!(price > 0) || !(n >= 1 && n <= 120)) { res.className = 'aff-res'; res.textContent = 'Inserisci prezzo e numero di rate (1-120).'; $('#aAdd').hidden = true; return; }
-  const r = simulate(price, n, parseInt($('#aFirst').value, 10));
-  $('#aAdd').hidden = !lastSim;
-  res.className = 'aff-res ' + (r.ok ? 'ok' : r.warn ? 'warn' : 'no'); res.innerHTML = r.html;
-};
 
 // ---- Chiave ----
 $('#kSave').onclick = async () => {
