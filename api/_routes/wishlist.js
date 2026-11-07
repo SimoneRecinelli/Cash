@@ -29,9 +29,11 @@ function parse(b) {
   if (!Number.isFinite(price) || price <= 0 || price > 10_000_000) return { error: 'Prezzo non valido' };
   if (![1, 2, 3].includes(priority)) return { error: 'Priorità non valida' };
   if (!Number.isInteger(installments) || installments < 1 || installments > 60) return { error: 'Rate non valide (1-60)' };
+  const pid = b.parent_id === undefined || b.parent_id === null || b.parent_id === '' ? null : Number(b.parent_id);
+  if (pid !== null && (!Number.isInteger(pid) || pid < 1)) return { error: 'Accorpamento non valido' };
   const url = cleanUrl(b.url);
   if (url.error) return { error: url.error };
-  return { v: { name, price: Math.round(price * 100) / 100, priority, installments, note, url: url.v } };
+  return { v: { name, price: Math.round(price * 100) / 100, priority, installments, note, url: url.v, parent_id: pid } };
 }
 
 export default handler(async (req, res) => {
@@ -39,7 +41,7 @@ export default handler(async (req, res) => {
 
   if (req.method === 'GET') {
     const items = await sql`
-      SELECT id, name, price::float8 AS price, url, priority, installments, note,
+      SELECT id, name, price::float8 AS price, url, priority, installments, note, parent_id,
              to_char(bought_at, 'YYYY-MM-DD') AS bought_at,
              to_char(created_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') || 'T' || lpad(id::text, 8, '0') AS created
       FROM wishlist ORDER BY priority, id`;
@@ -50,8 +52,8 @@ export default handler(async (req, res) => {
     const { v, error } = parse(req.body);
     if (error) return res.status(400).json({ error });
     const [row] = await sql`
-      INSERT INTO wishlist (name, price, url, priority, installments, note)
-      VALUES (${v.name}, ${v.price}, ${v.url}, ${v.priority}, ${v.installments}, ${v.note}) RETURNING id`;
+      INSERT INTO wishlist (name, price, url, priority, installments, note, parent_id)
+      VALUES (${v.name}, ${v.price}, ${v.url}, ${v.priority}, ${v.installments}, ${v.note}, ${v.parent_id}) RETURNING id`;
     return res.status(201).json({ id: row.id });
   }
 
@@ -61,14 +63,16 @@ export default handler(async (req, res) => {
     const b = req.body && typeof req.body === 'object' ? req.body : {};
     // Solo "comprato": segna (o toglie) la data di acquisto
     if (b.bought !== undefined && b.name === undefined) {
-      await sql`UPDATE wishlist SET bought_at = ${b.bought === true ? todayStr() : null}::date WHERE id = ${id}`;
+      // se è un acquisto con accessori accorpati, comprato/non comprato vale anche per loro
+      await sql`UPDATE wishlist SET bought_at = ${b.bought === true ? todayStr() : null}::date WHERE id = ${id} OR parent_id = ${id}`;
       return res.status(200).json({ ok: true });
     }
     const { v, error } = parse(b);
     if (error) return res.status(400).json({ error });
+    if (v.parent_id === id) return res.status(400).json({ error: 'Non puoi accorpare un desiderio a se stesso' });
     const rows = await sql`
       UPDATE wishlist SET name = ${v.name}, price = ${v.price}, url = ${v.url}, priority = ${v.priority},
-             installments = ${v.installments}, note = ${v.note}
+             installments = ${v.installments}, note = ${v.note}, parent_id = ${v.parent_id}
       WHERE id = ${id} RETURNING id`;
     if (!rows.length) return res.status(404).json({ error: 'Desiderio non trovato' });
     return res.status(200).json({ ok: true });
@@ -77,6 +81,7 @@ export default handler(async (req, res) => {
   if (req.method === 'DELETE') {
     const id = Number(req.query.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID non valido' });
+    await sql`UPDATE wishlist SET parent_id = NULL WHERE parent_id = ${id}`; // gli accessori tornano desideri a sé
     await sql`DELETE FROM wishlist WHERE id = ${id}`;
     return res.status(200).json({ ok: true });
   }

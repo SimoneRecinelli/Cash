@@ -187,6 +187,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .wish { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
 .wish:last-child { border-bottom: 0; }
 .wish .wbody { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; text-align: left; background: none; border: 0; padding: 14px 8px 14px 16px; color: var(--ink); font: inherit; cursor: pointer; }
+.wish.wchild { background: var(--bg); } .wish.wchild .wbody { padding: 9px 8px 9px 32px; } .wish.wchild .wt { font-weight: 500; font-size: 14px; } .wish.wchild .num { font-size: 14px; color: var(--muted); }
 .wish .wt { font-weight: 600; word-break: break-word; }
 .wish .ws { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .wish .wp { font-size: 13px; margin-top: 6px; font-weight: 600; }
@@ -382,6 +383,8 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
     <button type="button" class="chip on" data-p="2">Media</button>
     <button type="button" class="chip" data-p="3">Bassa</button>
   </div>
+  <div id="wParentBox"><label for="wParent">Accorpa a un altro acquisto (facoltativo)</label>
+  <select id="wParent"><option value="">— nessuno, acquisto a sé —</option></select></div>
   <label for="wNote">Nota (facoltativa)</label>
   <input id="wNote" maxlength="200" placeholder="es. ricondizionato, grado A" autocomplete="off">
   <div class="hint">Il prezzo lo scrivi tu: non leggo le pagine dei negozi. Le priorità decidono chi si prende il margine per primo.</div>
@@ -1064,24 +1067,36 @@ function wishPlanText(p) {
   const m = p.margin != null ? ` · margine dopo ≈ ${eur0.format(p.margin)}` : '';
   return `<div class="wp ${when[0]}">${esc(when[1])}${esc(m)}</div>`;
 }
+// Gli accessori accorpati a un acquisto (es. pellicola e cover dell'iPad) si sommano al suo prezzo e seguono le sue rate e la sua priorità
+function wishGroups(open) {
+  const ids = new Set(open.map((x) => x.id)), kids = {};
+  const child = (x) => x.parent_id && x.parent_id !== x.id && ids.has(x.parent_id);
+  open.filter(child).forEach((x) => (kids[x.parent_id] = kids[x.parent_id] || []).push(x));
+  const tops = open.filter((x) => !child(x)).map((x) => ({ ...x, price: x.price + (kids[x.id] || []).reduce((a, c) => a + c.price, 0) }));
+  return { tops, kids };
+}
 function renderWish() {
   const open = wishItems.filter((x) => !x.bought_at), done = wishItems.filter((x) => x.bought_at);
   if (!open.length) {
     $('#wishList').innerHTML = '<div class="empty">Nessun desiderio.<br>Aggiungi quello che vuoi comprare, con il link e una priorità: ti dico quando puoi permetterti ognuno, uno dopo l’altro.</div>';
     $('#wishSummary').textContent = '';
   } else {
-    const sched = data ? SimCore.schedule(data, open) : open.map((x) => ({ ...x, plan: null }));
+    const { tops, kids } = wishGroups(open);
+    const sched = data ? SimCore.schedule(data, tops) : tops.map((x) => ({ ...x, plan: null }));
     $('#wishList').innerHTML = sched.map((x) => {
       const [pl, pc] = PRIO[x.priority];
-      const sub = [x.installments > 1 ? `${x.installments} rate da ${eur.format(x.price / x.installments)}` : '', host(x.url), x.note].filter(Boolean).join(' · ');
+      const ch = kids[x.id] || [];
+      const sub = [x.installments > 1 ? `${x.installments} rate da ${eur.format(x.price / x.installments)}` : '', ch.length ? `compresi ${ch.length} accessori` : '', host(x.url), x.note].filter(Boolean).join(' · ');
       return `<div class="wish" data-id="${x.id}">
         <button class="wbody"><span style="min-width:0"><div class="wt">${esc(x.name)}<span class="pill ${pc}">${pl}</span></div>
           ${sub ? `<div class="ws">${esc(sub)}</div>` : ''}${wishPlanText(x.plan)}</span><b class="num">${eur0.format(x.price)}</b></button>
-        ${x.url ? `<a class="wopen" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>`;
+        ${x.url ? `<a class="wopen" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>` +
+        ch.map((c) => `<div class="wish wchild" data-id="${c.id}"><button class="wbody"><span style="min-width:0"><div class="wt">+ ${esc(c.name)}</div></span><b class="num">${eur.format(c.price)}</b></button>
+          ${c.url ? `<a class="wopen" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>`).join('');
     }).join('');
     const tot = open.reduce((s, x) => s + x.price, 0);
     const last = sched.filter((x) => x.plan).map((x) => x.plan.last).sort().pop();
-    $('#wishSummary').textContent = `${open.length} ${open.length === 1 ? 'desiderio' : 'desideri'} · ${eur0.format(tot)} in tutto` + (last && data ? ` · comprandoli in ordine di priorità, l’ultimo si chiude il ${fullD(last)}` : '');
+    $('#wishSummary').textContent = `${tops.length} ${tops.length === 1 ? 'acquisto' : 'acquisti'} · ${eur0.format(tot)} in tutto` + (last && data ? ` · comprandoli in ordine di priorità, l’ultimo si chiude il ${fullD(last)}` : '');
   }
   $('#wishBoughtBox').hidden = !done.length;
   $('#wishBoughtSum').textContent = `Già comprati (${done.length})`;
@@ -1095,6 +1110,10 @@ function openWishForm(x) {
   $('#wName').value = x ? x.name : ''; $('#wPrice').value = x ? String(x.price).replace('.', ',') : '';
   $('#wN').value = x && x.installments > 1 ? x.installments : ''; $('#wUrl').value = x ? x.url : ''; $('#wNote').value = x ? x.note : '';
   setWishPrio(x ? x.priority : 2); $('#wishErr').textContent = '';
+  const hasKids = x && wishItems.some((w) => w.parent_id === x.id && !w.bought_at);
+  $('#wParent').innerHTML = '<option value="">— nessuno, acquisto a sé —</option>' + wishItems.filter((w) => !w.bought_at && !w.parent_id && (!x || w.id !== x.id)).map((w) => `<option value="${w.id}">${esc(w.name)}</option>`).join('');
+  $('#wParent').value = x && x.parent_id ? String(x.parent_id) : '';
+  $('#wParentBox').hidden = !!hasKids;
   openSheet('wishSheet');
   if (!x) setTimeout(() => $('#wName').focus(), 250);
 }
@@ -1104,7 +1123,7 @@ $('#wishSave').onclick = async () => {
   if (!$('#wName').value.trim()) { $('#wishErr').textContent = 'Scrivi cosa vuoi comprare'; return; }
   if (!(price > 0)) { $('#wishErr').textContent = 'Inserisci il prezzo'; return; }
   if (!(n >= 1 && n <= 60)) { $('#wishErr').textContent = 'Rate da 1 a 60'; return; }
-  const body = JSON.stringify({ name: $('#wName').value, price, installments: n, url: $('#wUrl').value, priority: wishPrio, note: $('#wNote').value });
+  const body = JSON.stringify({ name: $('#wName').value, price, installments: n, url: $('#wUrl').value, priority: wishPrio, note: $('#wNote').value, parent_id: $('#wParent').value || null });
   $('#wishSave').disabled = true;
   try {
     await api(wishEditId ? 'wishlist?id=' + wishEditId : 'wishlist', { method: wishEditId ? 'PUT' : 'POST', body });
@@ -1123,10 +1142,12 @@ $('#tab-wish').addEventListener('click', async (e) => {
   }
   wishSel = x;
   $('#wishActTitle').textContent = x.name;
-  const p = (SimCore.schedule(data, wishItems.filter((w) => !w.bought_at)).find((w) => w.id === x.id) || {}).plan;
+  const gt = wishGroups(wishItems.filter((w) => !w.bought_at));
+  const topX = gt.tops.find((w) => w.id === x.id);
+  const p = topX ? (SimCore.schedule(data, gt.tops).find((w) => w.id === x.id) || {}).plan : null;
   $('#wishActInfo').textContent = p ? (p.status === 'now' ? 'Con le priorità attuali puoi comprarlo subito.' : `Con le priorità attuali puoi comprarlo ${p.status === 'nextperiod' ? 'dal prossimo stipendio' : 'dal ' + fullD(p.start)}.`) : '';
   $('#wishOpen').hidden = !x.url; if (x.url) $('#wishOpen').href = x.url;
-  $('#wishSim').href = `/afford.html?name=${encodeURIComponent(x.name)}&price=${x.price}&n=${x.installments}`;
+  $('#wishSim').href = `/afford.html?name=${encodeURIComponent(x.name)}&price=${topX ? topX.price : x.price}&n=${x.installments}`;
   openSheet('wishActSheet');
 });
 $('#wishEdit').onclick = () => { if (wishSel) openWishForm(wishSel); };

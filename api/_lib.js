@@ -118,6 +118,7 @@ function init() {
         bought_at date,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parent_id int`;
       await sql`CREATE TABLE IF NOT EXISTS category_rules (
         id serial PRIMARY KEY,
         pattern text NOT NULL UNIQUE,
