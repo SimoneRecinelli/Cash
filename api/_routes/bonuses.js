@@ -1,4 +1,4 @@
-import { handler, db } from './_lib.js';
+import { handler, db } from '../_lib.js';
 
 // Mensilità aggiuntive annuali (tredicesima, quattordicesima, premi…): importo netto atteso
 // e data di accredito. Contano come entrata nel periodo in cui arrivano.

@@ -1,4 +1,4 @@
-import { handler, db, todayStr } from './_lib.js';
+import { handler, db, todayStr } from '../_lib.js';
 
 // Lista dei desideri: cosa vorresti comprare, con link, priorità (1 alta … 3 bassa) e rate previste.
 // Il calendario "quando posso permettermelo" lo calcola l'app (public/sim-core.js) dal riepilogo.

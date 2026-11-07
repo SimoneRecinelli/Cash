@@ -77,7 +77,7 @@ test('i margini restituiti sono quelli dopo gli acquisti precedenti', () => {
 });
 
 // ---- Link e API ----
-import { cleanUrl } from '../api/wishlist.js';
+import { cleanUrl } from '../api/_routes/wishlist.js';
 
 test('link: solo http/https; senza schema aggiunge https', () => {
   assert.equal(cleanUrl('amazon.it/dp/B0ABC').v, 'https://amazon.it/dp/B0ABC');
@@ -92,7 +92,7 @@ test('link: solo http/https; senza schema aggiunge https', () => {
 process.env.APP_KEY = 'w'.repeat(40);
 delete process.env.TOTP_SECRET;
 const { setDbForTests } = await import('../api/_lib.js');
-const wishlist = (await import('../api/wishlist.js')).default;
+const wishlist = (await import('../api/_routes/wishlist.js')).default;
 const inserted = [];
 setDbForTests(async (strs, ...v) => {
   const q = strs.join('?').replace(/\s+/g, ' ').trim();

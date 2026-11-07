@@ -1,4 +1,4 @@
-import { handler, db, todayStr } from './_lib.js';
+import { handler, db, todayStr } from '../_lib.js';
 
 // Messaggi della banca che il parser non ha saputo registrare: li confermi o li scarti a mano.
 const validDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(s).toISOString().slice(0, 10) === s;

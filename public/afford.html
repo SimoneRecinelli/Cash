@@ -304,7 +304,7 @@ function recompute() {
 }
 
 async function api(path, opts = {}) {
-  const r = await fetch('/api/' + path, { ...opts, headers: { 'content-type': 'application/json', 'x-session': KEY } });
+  const r = await fetch(path.split('?')[0].match(/^(balance|bonuses|goals|inbox|salaries|wishlist)$/) ? '/api/hub?r=' + path.replace('?', '&') : '/api/' + path, { ...opts, headers: { 'content-type': 'application/json', 'x-session': KEY } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(r.status === 401 ? 'Chiave non valida: apri prima l’app dalla Home' : j.error || 'Errore di rete');
   return j;

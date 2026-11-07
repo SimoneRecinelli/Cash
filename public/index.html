@@ -534,8 +534,14 @@ let KEY = '';
 try { KEY = localStorage.getItem('appkey') || ''; } catch (e) {}
 let type = 'expense', cat = 'Spesa', data = null;
 
+// Gli endpoint minori stanno tutti dietro a /api/hub?r=nome (limite di 12 funzioni di Vercel)
+const HUB = new Set(['balance', 'bonuses', 'goals', 'inbox', 'salaries', 'wishlist']);
+function apiUrl(path) {
+  const [name, qs] = path.split('?');
+  return HUB.has(name) ? `/api/hub?r=${name}${qs ? '&' + qs : ''}` : '/api/' + path;
+}
 async function api(path, opts = {}) {
-  const r = await fetch('/api/' + path, {
+  const r = await fetch(apiUrl(path), {
     ...opts,
     headers: { 'content-type': 'application/json', 'x-session': KEY },
   });

@@ -1,4 +1,4 @@
-import { handler, db } from './_lib.js';
+import { handler, db } from '../_lib.js';
 
 const validDate = (s) =>
   typeof s === 'string' &&

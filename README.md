@@ -97,6 +97,10 @@ si possono sempre correggere eliminando la voce e reinserendola.
 - **Desideri**: lista di cose da comprare con link (Amazon, Back Market…), prezzo, rate e priorità (alta/media/bassa). Il calendario (`public/sim-core.js`, la stessa logica della pagina Simula) assegna a ogni desiderio, in ordine di priorità, la prima data in cui regge insieme ai precedenti. Da qui si apre Simula precompilato, si segna come comprato (con registrazione della spesa o delle rate) o si modifica.
 - **Swipe** sinistra/destra tra le pagine.
 
+## Limite di Vercel
+
+Il piano gratuito consente al massimo **12 funzioni**: gli endpoint minori (balance, bonuses, goals, inbox, salaries, wishlist) stanno in `api/_routes/` dietro all'unica funzione `api/hub.js` (`/api/hub?r=nome`). Per aggiungerne uno: nuovo file in `_routes/`, riga in `hub.js` e nell'elenco `HUB` di `index.html`. Un test controlla il conteggio.
+
 ## Test
 
-`npm install && npm test` — 68 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.
+`npm install && npm test` — 71 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.

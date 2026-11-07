@@ -1,5 +1,5 @@
-import { handler } from './_lib.js';
-import { loadSummary } from './_load.js';
+import { handler } from '../_lib.js';
+import { loadSummary } from '../_load.js';
 
 // Controllo del saldo: confronti quello reale del conto con quello stimato dall'app.
 // La differenza viene registrata e il saldo dell'app si allinea a quello reale.
