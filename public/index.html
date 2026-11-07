@@ -76,6 +76,9 @@ h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: upp
 .leg .it .nm { flex: 1; }
 .leg .it .pc { color: var(--muted); font-size: 12px; min-width: 38px; text-align: right; }
 .leg .it.on { font-weight: 600; }
+.rectot { border-top: 1px solid var(--line); padding: 12px 16px; background: var(--track); border-radius: 0 0 var(--r, 16px) var(--r, 16px); }
+.rectot .row { display: flex; justify-content: space-between; font-size: 15px; }
+.rectot .sub { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
 .cat { padding: 12px 16px; }
 .cat + .cat { border-top: 1px solid var(--line); }
 .cat .row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
@@ -755,7 +758,12 @@ function render(d) {
       return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
         <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : r.flex && !sch ? 'giorno variabile · in arrivo questo mese' : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(r.flex && ok ? ' · giorno variabile' : '') + esc(last)}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
-    }).join('') + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
+    }).join('') + (() => {
+      const sum = (a) => a.reduce((x, r) => x + (r.status === 'verified' ? r.paid.amount : r.amount), 0);
+      const paid = rc.filter((r) => r.status === 'verified'), left = rc.filter((r) => r.status !== 'verified');
+      return `<div class="rectot"><div class="row"><span>Totale spese ricorrenti</span><b class="num">${eur.format(sum(rc))}</b></div>` +
+        (paid.length && left.length ? `<div class="sub"><span>già pagate ${eur.format(sum(paid))}</span><span>ancora da pagare ${eur.format(sum(left))}</span></div>` : '') + '</div>';
+    })() + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
   }
 
   // mensilità aggiuntive
