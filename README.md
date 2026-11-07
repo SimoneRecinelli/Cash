@@ -99,4 +99,4 @@ si possono sempre correggere eliminando la voce e reinserendola.
 
 ## Test
 
-`npm install && npm test` — 73 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.
+`npm install && npm test` — 68 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.
