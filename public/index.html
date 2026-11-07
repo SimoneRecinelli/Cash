@@ -453,6 +453,7 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
     <div><label for="rAmount">Importo (€)</label><input id="rAmount" inputmode="decimal" placeholder="0,00"></div>
     <div id="rDayBox"><label for="rDay">Giorno del mese</label><input id="rDay" inputmode="numeric" placeholder="es. 5"></div>
   </div>
+  <label class="chkrow"><input type="checkbox" id="rInst"> Pagamento a rate (escluso dal totale delle ricorrenti)</label>
   <label class="chkrow"><input type="checkbox" id="rFlex"> Giorno variabile (una volta al mese, senza data fissa)</label>
   <label for="rMatch">Parola nell'e-mail (facoltativa)</label>
   <input id="rMatch" maxlength="60" placeholder="es. NETFLIX" autocomplete="off" autocapitalize="off">
@@ -753,16 +754,21 @@ function render(d) {
     $('#recList').innerHTML = rc.map((r) => {
       const ok = r.status === 'verified';
       const sch = r.status === 'scheduled';
-      const pill = ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa e-mail</span>';
+      const rata = r.installment ? '<span class="pill">A rate</span>' : '';
+      const pill = rata + (ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa e-mail</span>');
       const last = r.until ? ` · ultimo addebito ${shortDate(r.until)}` : '';
       return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
         <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : r.flex && !sch ? 'giorno variabile · in arrivo questo mese' : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(r.flex && ok ? ' · giorno variabile' : '') + esc(last)}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
     }).join('') + (() => {
-      const sum = (a) => a.reduce((x, r) => x + (r.status === 'verified' ? r.paid.amount : r.amount), 0);
-      const paid = rc.filter((r) => r.status === 'verified'), left = rc.filter((r) => r.status !== 'verified');
-      return `<div class="rectot"><div class="row"><span>Totale spese ricorrenti</span><b class="num">${eur.format(sum(rc))}</b></div>` +
-        (paid.length && left.length ? `<div class="sub"><span>già pagate ${eur.format(sum(paid))}</span><span>ancora da pagare ${eur.format(sum(left))}</span></div>` : '') + '</div>';
+      const amt = (r) => (r.status === 'verified' ? r.paid.amount : r.amount);
+      const fixed = rc.filter((r) => !r.installment);
+      const sum = (a) => a.reduce((x, r) => x + amt(r), 0);
+      const paid = fixed.filter((r) => r.status === 'verified'), left = fixed.filter((r) => r.status !== 'verified');
+      const rate = rc.filter((r) => r.installment);
+      return `<div class="rectot"><div class="row"><span>Totale spese ricorrenti</span><b class="num">${eur.format(sum(fixed))}</b></div>` +
+        (paid.length && left.length ? `<div class="sub"><span>già pagate ${eur.format(sum(paid))}</span><span>ancora da pagare ${eur.format(sum(left))}</span></div>` : '') +
+        (rate.length ? `<div class="sub"><span>escluse le rate</span><span>${eur.format(sum(rate))}</span></div>` : '') + '</div>';
     })() + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
   }
 
@@ -1155,7 +1161,7 @@ $('#rFlex').onchange = syncFlex;
 $('#btnAddRec').onclick = () => {
   recEditId = null; $('#recTitle').textContent = 'Nuova spesa ricorrente';
   ['#rName', '#rAmount', '#rDay', '#rMatch', '#rStart', '#rUntil'].forEach((i) => ($(i).value = ''));
-  $('#rFlex').checked = false; syncFlex();
+  $('#rFlex').checked = false; $('#rInst').checked = false; syncFlex();
   $('#recErr').textContent = '';
   openSheet('recAddSheet');
 };
@@ -1164,6 +1170,7 @@ $('#recEdit').onclick = () => {
   recEditId = r.id; $('#recTitle').textContent = 'Modifica spesa ricorrente';
   $('#rName').value = r.name; $('#rAmount').value = String(r.amount).replace('.', ','); $('#rDay').value = r.day;
   $('#rMatch').value = r.match || ''; $('#rStart').value = r.starts || ''; $('#rUntil').value = r.until || '';
+  $('#rInst').checked = !!r.installment;
   $('#rFlex').checked = !!r.flex; if (r.flex) $('#rDay').value = ''; syncFlex();
   $('#recErr').textContent = '';
   openSheet('recAddSheet');
@@ -1171,7 +1178,7 @@ $('#recEdit').onclick = () => {
 $('#recSave').onclick = async () => {
   const amount = parseNum($('#rAmount').value), flex = $('#rFlex').checked, day = flex ? 28 : parseInt($('#rDay').value, 10);
   if (!$('#rName').value.trim() || !(amount > 0) || !(day >= 1 && day <= 31)) { $('#recErr').textContent = flex ? 'Inserisci nome e importo' : 'Inserisci nome, importo e giorno (1-31)'; return; }
-  const body = JSON.stringify({ name: $('#rName').value, amount, day, flex, match: $('#rMatch').value, starts: $('#rStart').value || null, until: $('#rUntil').value || null });
+  const body = JSON.stringify({ name: $('#rName').value, amount, day, flex, installment: $('#rInst').checked, match: $('#rMatch').value, starts: $('#rStart').value || null, until: $('#rUntil').value || null });
   try {
     await api(recEditId ? 'recurring?id=' + recEditId : 'recurring', { method: recEditId ? 'PUT' : 'POST', body });
     closeSheets(); toast(recEditId ? 'Modificata' : 'Ricorrente aggiunta'); load();

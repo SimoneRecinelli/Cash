@@ -24,7 +24,7 @@ export async function loadSummary() {
         FROM transactions
         WHERE date >= ${p.start}::date AND date < ${p.end}::date
         ORDER BY date DESC, id DESC LIMIT 1000`,
-    sql`SELECT id, name, amount::float8 AS amount, day, match, flex,
+    sql`SELECT id, name, amount::float8 AS amount, day, match, flex, installment,
                to_char(starts, 'YYYY-MM-DD') AS starts, to_char(until, 'YYYY-MM-DD') AS until
         FROM recurring ORDER BY day, id`,
     sql`SELECT id, name, month, day, amount::float8 AS amount FROM bonuses ORDER BY month, day, id`,

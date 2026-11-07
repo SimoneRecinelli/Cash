@@ -64,7 +64,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
   for (const r of recurring) {
     if (r.until && r.until < p.start) continue; // conclusa
     const flex = !!r.flex;
-    const item = { id: r.id, name: r.name, amount: r.amount, day: r.day, match: r.match, starts: r.starts, until: r.until, flex };
+    const item = { id: r.id, name: r.name, amount: r.amount, day: r.day, match: r.match, starts: r.starts, until: r.until, flex, installment: !!r.installment };
     // A giorno variabile: nessuna data prevista, vale per tutto il periodo (ai fini delle date: ultimo giorno)
     const dueNow = flex ? addDaysStr(p.end, -1) : dueInPeriod(r.day, p.start, p.end);
     if ((r.starts && dueNow < r.starts) || (r.until && dueNow > r.until)) {
