@@ -93,7 +93,7 @@ td.r, th.r { text-align: right; }
 button.primary { width: 100%; margin-top: 14px; border: 0; border-radius: 14px; padding: 15px; background: var(--accent); color: var(--on-accent); font: 600 16px inherit; cursor: pointer; }
 button.ghost { background: var(--card); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(5, 1fr);
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: repeat(6, 1fr);
   background: var(--card); border-top: 1px solid var(--line); padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px); }
 .tabbar > * { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border: 0; background: none;
   color: var(--muted); font: 600 11px -apple-system, system-ui, sans-serif; text-decoration: none; cursor: pointer; }
@@ -129,9 +129,11 @@ button.ghost { background: var(--card); color: var(--accent); box-shadow: inset 
   <a href="/#mov"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Movimenti</span></a>
   <a href="/#goals"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span>Obiettivi</span></a>
   <a href="/#fixed"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Fisse</span></a>
+  <a href="/#wish"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg><span>Desideri</span></a>
   <a href="/afford.html" class="on"><svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></svg><span>Simula</span></a>
 </nav>
 
+<script src="/sim-core.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
@@ -147,66 +149,12 @@ let KEY = '';
 try { KEY = localStorage.getItem('appkey') || ''; } catch (e) {}
 let data = null, lastSim = null;
 
-// ---- Date ----
-const DAY = 86400000;
-const t0 = (iso) => Date.parse(iso + 'T12:00:00Z');
-const isoOf = (ms) => new Date(ms).toISOString().slice(0, 10);
-const addDaysISO = (iso, k) => isoOf(t0(iso) + k * DAY);
-function addMonthsStr(iso, k) {
-  const [y, m, d] = iso.split('-').map(Number);
-  const t = y * 12 + (m - 1) + k, ny = Math.floor(t / 12), nm = (t % 12) + 1;
-  const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
-  return `${ny}-${String(nm).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
-}
+// ---- Date e simulazione: la logica sta in sim-core.js (condivisa con la lista dei desideri) ----
+const { addMonthsStr, addDaysISO } = SimCore;
+const plan = (price, n, start) => SimCore.plan(data, price, n, start);
+const analyse = (price, n, first) => SimCore.analyse(data, price, n, first);
 const fmtD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtM = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
-
-// ---- Simulazione ----
-function plan(price, n, start) {
-  const goals = data.goals.filter((g) => !g.expired);
-  const q = price / n;
-  const dates = Array.from({ length: n }, (_, k) => addMonthsStr(start, k));
-  const margin = (data.settings && data.settings.margin) || 0;
-  const rows = goals.map((g) => {
-    const cost = q * dates.filter((x) => x <= g.date).length;
-    const before = g.spendable - margin;
-    return { g, cost, before, after: before - cost };
-  });
-  const worst = rows.length ? rows.reduce((a, r) => (r.after < a.after ? r : a), rows[0]) : null;
-  return { q, dates, rows, worst, margin };
-}
-
-function analyse(price, n, first) {
-  const today = data.today;
-  const start = addMonthsStr(today, first);
-  const p = plan(price, n, start);
-  const rem = Math.max(0, data.totals.remaining);
-  const habitLeft = data.totals.habitLeft || 0;
-  const nowCost = p.q * p.dates.filter((x) => x < data.period.end).length;
-  const hasGoals = p.rows.length > 0;
-  let level;
-  if (hasGoals) level = p.worst.after < 0 ? 'no' : nowCost > rem ? 'warn' : 'ok';
-  else level = nowCost > rem ? 'no' : 'ok';
-
-  // alternative
-  const alt = {};
-  if (hasGoals) {
-    const goals = p.rows.map((r) => r.g);
-    alt.maxNow = Math.max(0, Math.min(...goals.map((g) => g.spendable - p.margin)));
-    if (level === 'no') {
-      for (const g of goals) {
-        const s = addDaysISO(g.date, 1);
-        const p2 = plan(price, n, s);
-        const rest = p2.rows.filter((r) => r.g.date >= s);
-        if (!rest.length || rest.every((r) => r.after >= 0)) { alt.when = { s, last: !rest.length }; break; }
-      }
-      for (let c = n + 1; c <= 60; c++) {
-        if (plan(price, c, start).worst.after >= 0) { alt.rates = c; break; }
-      }
-    }
-  }
-  return { price, n, first, start, p, rem, habitLeft, nowCost, level, hasGoals, alt };
-}
 
 function niceStep(raw) {
   const e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e;
@@ -375,6 +323,13 @@ function sync() {
 ['aPrice', 'aN', 'aName'].forEach((id) => $('#' + id).addEventListener('input', () => { sync(); recompute(); }));
 $('#aFirst').addEventListener('change', recompute);
 sync();
+// Arrivo dalla lista dei desideri: precompila nome, prezzo e rate
+{
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('name')) $('#aName').value = qs.get('name').slice(0, 80);
+  if (qs.get('price')) $('#aPrice').value = String(qs.get('price')).replace('.', ',');
+  if (qs.get('n') && qs.get('n') !== '1') { $('#aN').value = qs.get('n'); sync(); }
+}
 
 (async () => {
   if (!KEY) { $('#out').innerHTML = '<div class="empty">Apri prima l’app dalla Home e inserisci la chiave di accesso.</div>'; return; }
@@ -383,7 +338,7 @@ sync();
 })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
-// Swipe verso destra: torna alla pagina Fisse
+// Swipe verso destra: torna alla pagina Desideri
 let swipe = null;
 document.addEventListener('touchstart', (e) => {
   const t = e.touches[0];
@@ -394,7 +349,7 @@ document.addEventListener('touchend', (e) => {
   if (!swipe) return;
   const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, quick = Date.now() - swipe.at < 800;
   swipe = null;
-  if (quick && dx > 70 && dx > Math.abs(dy) * 1.6) location.href = '/#fixed';
+  if (quick && dx > 70 && dx > Math.abs(dy) * 1.6) location.href = '/#wish';
 }, { passive: true });
 </script>
 </body>

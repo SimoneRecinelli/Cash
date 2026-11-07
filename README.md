@@ -94,6 +94,9 @@ si possono sempre correggere eliminando la voce e reinserendola.
 - **Percorso del saldo** verso gli obiettivi e **mesi chiusi** (variazione del saldo da stipendio a stipendio), da una fotografia giornaliera del saldo.
 - **Widget iPhone**: `/api/widget` (sola lettura, header `x-widget-key` = `WIDGET_KEY`). Script per Scriptable in `docs/scriptable-cash.js`.
 
+- **Desideri**: lista di cose da comprare con link (Amazon, Back Market…), prezzo, rate e priorità (alta/media/bassa). Il calendario (`public/sim-core.js`, la stessa logica della pagina Simula) assegna a ogni desiderio, in ordine di priorità, la prima data in cui regge insieme ai precedenti. Da qui si apre Simula precompilato, si segna come comprato (con registrazione della spesa o delle rate) o si modifica.
+- **Swipe** sinistra/destra tra le pagine.
+
 ## Test
 
-`npm install && npm test` — 58 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.
+`npm install && npm test` — 73 test (date, motore del budget con casi calcolati a mano, parser, autenticazione, ingest). Il calcolo sta in `api/_calc.js`, senza database né orologio.

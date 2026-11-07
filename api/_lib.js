@@ -106,6 +106,17 @@ function init() {
         date date PRIMARY KEY,
         balance numeric(14,2) NOT NULL
       )`;
+      await sql`CREATE TABLE IF NOT EXISTS wishlist (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        price numeric(12,2) NOT NULL CHECK (price > 0),
+        url text NOT NULL DEFAULT '',
+        priority int NOT NULL DEFAULT 2 CHECK (priority BETWEEN 1 AND 3),
+        installments int NOT NULL DEFAULT 1 CHECK (installments BETWEEN 1 AND 60),
+        note text NOT NULL DEFAULT '',
+        bought_at date,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       await sql`CREATE TABLE IF NOT EXISTS category_rules (
         id serial PRIMARY KEY,
         pattern text NOT NULL UNIQUE,
