@@ -16,12 +16,16 @@
   --bg: #f5f5f0; --card: #ffffff; --ink: #14201d; --muted: #6b7773; --line: #e6e8e4;
   --accent: #0f766e; --on-accent: #ffffff; --good: #0f766e; --warn: #b45309; --bad: #b91c1c;
   --track: #e8ebe7; --shadow: 0 1px 2px rgba(20,32,29,.06), 0 8px 24px rgba(20,32,29,.06);
+  --k0:#0f766e; --k1:#d97706; --k2:#2563eb; --k3:#ea580c; --k4:#e11d48; --k5:#7c3aed;
+  --k6:#16a34a; --k7:#0891b2; --k8:#c026d3; --k9:#65a30d; --k10:#64748b; --k11:#94a3b8;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0c1210; --card: #141c19; --ink: #eef2f0; --muted: #8a9792; --line: #222d29;
     --accent: #2dd4bf; --on-accent: #06201c; --good: #2dd4bf; --warn: #fbbf24; --bad: #f87171;
     --track: #1f2a26; --shadow: none;
+    --k0:#2dd4bf; --k1:#fbbf24; --k2:#60a5fa; --k3:#fb923c; --k4:#fb7185; --k5:#a78bfa;
+    --k6:#4ade80; --k7:#22d3ee; --k8:#e879f9; --k9:#a3e635; --k10:#94a3b8; --k11:#64748b;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -57,6 +61,21 @@ header h1 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 0; l
 
 h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 26px 4px 10px; }
 .card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+.pie { display: flex; flex-direction: column; align-items: center; padding: 16px 16px 8px; }
+.pie svg { width: 200px; height: 200px; display: block; }
+.pie circle.sl { fill: none; stroke-width: 26; cursor: pointer; transition: opacity .15s; }
+.pie .dim { opacity: .25; }
+.pie .ctr { text-anchor: middle; fill: var(--ink); }
+.pie .ctr .t1 { font-size: 11px; fill: var(--muted); }
+.pie .ctr .t2 { font-size: 20px; font-weight: 700; }
+.pie .ctr .t3 { font-size: 11px; fill: var(--muted); }
+.pie-sub { font-size: 12px; color: var(--muted); padding: 0 16px 8px; text-align: center; }
+.leg { width: 100%; }
+.leg .it { display: flex; align-items: center; gap: 10px; padding: 9px 4px; font-size: 14px; cursor: pointer; border-top: 1px solid var(--line); }
+.leg .it .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.leg .it .nm { flex: 1; }
+.leg .it .pc { color: var(--muted); font-size: 12px; min-width: 38px; text-align: right; }
+.leg .it.on { font-weight: 600; }
 .cat { padding: 12px 16px; }
 .cat + .cat { border-top: 1px solid var(--line); }
 .cat .row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
@@ -627,10 +646,7 @@ function render(d) {
   // categorie
   const cats = d.categories;
   $('#catsWrap').hidden = !cats.length;
-  const max = cats.length ? cats[0].total : 1;
-  $('#cats').innerHTML = cats.map((c) => `
-    <div class="cat"><div class="row"><span>${esc(c.category)}</span><span class="num">${eur.format(c.total)}</span></div>
-    <div class="mini"><i style="width:${(c.total / max) * 100}%"></i></div></div>`).join('');
+  renderPie(cats, t.spent);
 
   // movimenti
   const list = $('#list');
@@ -918,6 +934,48 @@ $('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); } cat
 
 // ---- Percorso del saldo, controllo saldo, mesi chiusi ----
 const niceStep = (r) => { const e = 10 ** Math.floor(Math.log10(r)); const f = r / e; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e; };
+// ---- grafico a torta delle categorie (si ricalcola a ogni periodo) ----
+const CAT_COLOR = { Spesa: 0, Casa: 1, Trasporti: 2, Benzina: 3, Ristoranti: 4, Svago: 5, Salute: 6, Abbonamenti: 7, Shopping: 8, Capelli: 9, Contanti: 10, Altro: 11 };
+const catColor = (name) => {
+  if (name in CAT_COLOR) return `var(--k${CAT_COLOR[name]})`;
+  let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 10;
+  return `var(--k${h})`;
+};
+let pieSel = null;
+function renderPie(cats, spent) {
+  const el = $('#cats');
+  const tot = cats.reduce((a, c) => a + c.total, 0);
+  if (!cats.length || tot <= 0) { el.innerHTML = ''; return; }
+  if (pieSel && !cats.some((c) => c.category === pieSel)) pieSel = null;
+  const R = 70, C = 2 * Math.PI * R;
+  let off = 0;
+  const slices = cats.map((c) => {
+    const frac = c.total / tot, len = frac * C;
+    const gap = cats.length > 1 ? Math.min(2, len * 0.5) : 0;
+    const dim = pieSel && pieSel !== c.category ? ' dim' : '';
+    const out = `<circle class="sl${dim}" data-c="${esc(c.category)}" cx="100" cy="100" r="${R}" stroke="${catColor(c.category)}"
+      stroke-dasharray="${Math.max(len - gap, 0.01)} ${C - Math.max(len - gap, 0.01)}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)"/>`;
+    off += len;
+    return out;
+  }).join('');
+  const sel = pieSel ? cats.find((c) => c.category === pieSel) : null;
+  const center = sel
+    ? `<text class="ctr"><tspan class="t1" x="100" y="90">${esc(sel.category)}</tspan><tspan class="t2" x="100" y="113">${eur0.format(sel.total)}</tspan><tspan class="t3" x="100" y="131">${Math.round(sel.total / tot * 100)}%</tspan></text>`
+    : `<text class="ctr"><tspan class="t1" x="100" y="92">Spese del periodo</tspan><tspan class="t2" x="100" y="116">${eur0.format(tot)}</tspan></text>`;
+  const legend = cats.map((c) => `
+    <div class="it${pieSel === c.category ? ' on' : ''}" data-c="${esc(c.category)}">
+      <span class="dot" style="background:${catColor(c.category)}"></span><span class="nm">${esc(c.category)}</span>
+      <span class="pc">${Math.round(c.total / tot * 100)}%</span><span class="num">${eur.format(c.total)}</span></div>`).join('');
+  el.innerHTML = `<div class="pie"><svg viewBox="0 0 200 200" role="img" aria-label="Spese per categoria">
+      <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--track)" stroke-width="26"/>${slices}${center}</svg>
+    <div class="pie-sub">Si azzera a ogni nuovo stipendio · tocca una categoria per evidenziarla</div>
+    <div class="leg">${legend}</div></div>`;
+  el.querySelectorAll('[data-c]').forEach((n) => n.addEventListener('click', () => {
+    const c = n.getAttribute('data-c');
+    pieSel = pieSel === c ? null : c;
+    renderPie(cats, spent);
+  }));
+}
 const fmtK = (v) => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0).replace('.', ',') + 'k' : String(Math.round(v)));
 const dd = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
 const monYY = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' }).replace(' ', '\u00a0');
