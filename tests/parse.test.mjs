@@ -57,3 +57,18 @@ test('proposta per un messaggio non riconosciuto: importo, tipo e negozio quando
   assert.equal(h.type, 'expense');
   assert.equal(h.merchant, 'BAR SPORT');
 });
+
+test('benzina: riconosciuta dal distributore o dalle parole del carburante nella mail', () => {
+  assert.equal(parseBankMessage('Pagamento carta di 45,00 € presso ENI STATION ROSETO il 07/11').category, 'Benzina');
+  assert.equal(parseBankMessage('Pagamento carta di 30,00 € presso Q8 EASY il 07/11').category, 'Benzina');
+  assert.equal(parseBankMessage('Pagamento carta di 52,10 € presso AREA DI SERVIZIO 12 il 07/11. Carburante self service').category, 'Benzina');
+  assert.equal(parseBankMessage('Pagamento di 40,00 € presso TAMOIL').category, 'Benzina');
+  assert.equal(guessFromText('Operazione di 38,00 € presso IP PETROLI il 05/11').category, 'Benzina');
+});
+
+test('benzina: non scambia altri negozi per distributori; autostrada e treno restano Trasporti', () => {
+  assert.equal(parseBankMessage('Pagamento carta di 12,00 € presso ESSELUNGA ROSETO il 07/11').category, 'Spesa');
+  assert.equal(parseBankMessage('Pagamento carta di 9,00 € presso PASTICCERIA GRIMALDI il 07/11').category, 'Altro');
+  assert.equal(parseBankMessage('Pagamento carta di 8,40 € presso AUTOSTRADE PER L ITALIA il 07/11').category, 'Trasporti');
+  assert.equal(parseBankMessage('Pagamento carta di 29,90 € presso TRENITALIA il 07/11').category, 'Trasporti');
+});

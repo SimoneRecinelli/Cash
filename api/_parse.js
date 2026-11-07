@@ -15,10 +15,14 @@ const AMOUNT_RES = [
 const MERCHANT_RE =
   /(?:presso|c\/o|a favore di|beneficiario|esercente)\s*:?\s+(.+?)(?=\s+(?:il|in data|alle|ore|con|carta|del|tramite)\b|\s+\d{1,2}[\/.]\d{1,2}|[.;\n]|$)/i;
 
+// Carburante: nome del distributore o parole tipiche, nel negozio o nel testo della mail
+const FUEL_RE = /benzin|carburant|gasolio|diesel|\bgpl\b|rifornimento|stazione di servizio|self.?service|\beni\b|enilive|agip|\bq8\b|\besso\b|tamoil|\bip\b|\bshell\b|total ?energies|repsol|\bies\b|\bapi\b|\berg\b|kerotris|italiana petroli/i;
+
 const CATEGORY_RULES = [
-  ['Spesa', /supermerc|coop|conad|esselunga|lidl|carrefour|despar|eurospin|md\b|pam\b|aldi|famila|iper/i],
+  ['Spesa', /supermerc|coop|conad|esselunga|lidl|carrefour|despar|eurospin|md\b|pam\b|\baldi\b|famila|iper/i],
   ['Ristoranti', /ristor|pizzer|trattor|osteria|\bbar\b|caff|mcdonald|burger|sushi|kebab|gelat|pub\b/i],
-  ['Trasporti', /\beni\b|q8|esso|tamoil|\bip\b|autostrad|telepass|trenitalia|italo|uber|\batm\b|taxi|parcheggi|benzin|carburant/i],
+  ['Benzina', FUEL_RE],
+  ['Trasporti', /autostrad|telepass|trenitalia|italo|uber|\batm\b|taxi|parcheggi/i],
   ['Abbonamenti', /netflix|spotify|prime video|disney|apple\.com|itunes|google|dazn|youtube|icloud/i],
   ['Salute', /farmaci|parafarm|medic|clinic|dent|ottic/i],
   ['Shopping', /amazon|zalando|zara|h&m|ikea|decathlon|mediaworld|unieuro|paypal/i],
@@ -39,6 +43,12 @@ export function parseAmount(text) {
 export function guessCategory(merchant) {
   for (const [cat, re] of CATEGORY_RULES) if (re.test(merchant)) return cat;
   return 'Altro';
+}
+
+// Categoria di una spesa: dal negozio; se non basta, le parole del carburante nel testo della mail
+function categorize(merchant, text) {
+  const g = guessCategory(merchant);
+  return g === 'Altro' && FUEL_RE.test(text) ? 'Benzina' : g;
 }
 
 // → { ignore: true, reason } | { error } | { type, amount, merchant, category }
@@ -66,7 +76,7 @@ export function parseBankMessage(raw) {
     type,
     amount,
     merchant,
-    category: type === 'income' ? 'Extra' : /prelie|prelev/i.test(text) ? 'Contanti' : guessCategory(merchant),
+    category: type === 'income' ? 'Extra' : /prelie|prelev/i.test(text) ? 'Contanti' : categorize(merchant, text),
   };
 }
 
@@ -79,7 +89,7 @@ export function guessFromText(raw) {
     type,
     amount: parseAmount(text),
     merchant,
-    category: type === 'income' ? 'Extra' : /prelie|prelev/i.test(text) ? 'Contanti' : guessCategory(merchant),
+    category: type === 'income' ? 'Extra' : /prelie|prelev/i.test(text) ? 'Contanti' : categorize(merchant, text),
   };
 }
 
