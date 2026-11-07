@@ -72,3 +72,12 @@ test('benzina: non scambia altri negozi per distributori; autostrada e treno res
   assert.equal(parseBankMessage('Pagamento carta di 8,40 € presso AUTOSTRADE PER L ITALIA il 07/11').category, 'Trasporti');
   assert.equal(parseBankMessage('Pagamento carta di 29,90 € presso TRENITALIA il 07/11').category, 'Trasporti');
 });
+
+test('negozio con punti nel nome (F.LLI DI FRANCESCO L. &) non viene tagliato', () => {
+  const p = parseBankMessage('Gentile cliente, ti informiamo che in data 07.11 è stato richiesto un pagamento di 30,00 euro con la carta 5167_*_*_5019 presso F.LLI DI FRANCESCO L. &, ROSETO DEGLI ABRUZZI Cordiali saluti Intesa Sanpaolo Questo messaggio è stato inviato da un indirizzo email di sola notifica');
+  assert.equal(p.type, 'expense');
+  assert.equal(p.amount, 30);
+  assert.equal(p.merchant, 'F.LLI DI FRANCESCO L. &, ROSETO DEGLI ABRUZZI');
+  assert.equal(parseBankMessage('Pagamento carta di 9,00 € presso CLAUDE.AI SUBSCRIPTION il 06/11.').merchant, 'CLAUDE.AI SUBSCRIPTION');
+  assert.equal(parseBankMessage('Pagamento di 5,00 € presso BAR SPORT. Saldo disponibile 100,00 €').merchant, 'BAR SPORT');
+});

@@ -13,7 +13,7 @@ const AMOUNT_RES = [
 ];
 
 const MERCHANT_RE =
-  /(?:presso|c\/o|a favore di|beneficiario|esercente)\s*:?\s+(.+?)(?=\s+(?:il|in data|alle|ore|con|carta|del|tramite)\b|\s+\d{1,2}[\/.]\d{1,2}|[.;\n]|$)/i;
+  /(?:presso|c\/o|a favore di|beneficiario|esercente)\s*:?\s+(.+?)(?=\s+(?:il|in data|alle|ore|con|carta|del|tramite)\b|\s+\d{1,2}[\/.]\d{1,2}|;|\.\s*$|\.\s+(?:saldo|disponibil|se|per|grazie|info|cordiali|questo|il presente)\b|$)/i;
 
 // Carburante: nome del distributore o parole tipiche, nel negozio o nel testo della mail
 const FUEL_RE = /benzin|carburant|gasolio|diesel|\bgpl\b|rifornimento|stazione di servizio|self.?service|\beni\b|enilive|agip|\bq8\b|\besso\b|tamoil|\bip\b|\bshell\b|total ?energies|repsol|\bies\b|\bapi\b|\berg\b|kerotris|italiana petroli/i;
