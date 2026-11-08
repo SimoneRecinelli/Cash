@@ -316,7 +316,7 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   <section class="tab" id="tab-wish">
     <div class="sec"><h2>Lista dei desideri</h2><button class="add-mini" id="btnAddWish" aria-label="Aggiungi desiderio">+</button></div>
     <div class="hint" id="wishSummary" style="margin:-4px 4px 8px"></div>
-    <button class="link" id="wishCheck" style="margin:0 0 10px 4px;text-align:left">Controlla i prezzi online adesso</button>
+    <button class="btn2" id="wishCheck" style="margin:0 0 12px;width:100%">↻ Controlla i prezzi online adesso</button>
     <div class="card" id="wishList"></div>
     <details id="wishBoughtBox" hidden><summary id="wishBoughtSum">Già comprati</summary><div class="card" id="wishBought"></div></details>
   </section>
@@ -1139,7 +1139,7 @@ $('#wishCheck').onclick = async () => {
     const r = await api('pricecheck', { method: 'POST', body: '{}' });
     toast(r.checked ? `Letti ${r.read} prezzi su ${r.checked}` : 'Niente da controllare'); await load();
   } catch (e) { alert(e.message); }
-  finally { b.disabled = false; b.textContent = 'Controlla i prezzi online adesso'; }
+  finally { b.disabled = false; b.textContent = '↻ Controlla i prezzi online adesso'; }
 };
 $('#wishSave').onclick = async () => {
   const price = parseNum($('#wPrice').value), n = $('#wN').value.trim() ? parseInt($('#wN').value, 10) : 1;
