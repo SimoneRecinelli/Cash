@@ -41,7 +41,8 @@ export default handler(async (req, res) => {
 
   if (req.method === 'GET') {
     const items = await sql`
-      SELECT id, name, price::float8 AS price, url, priority, installments, note, parent_id,
+      SELECT id, name, price::float8 AS price, url, priority, installments, note, parent_id, seen_price::float8 AS seen_price, low_price::float8 AS low_price, seen_status,
+             to_char(seen_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS seen_at,
              to_char(bought_at, 'YYYY-MM-DD') AS bought_at,
              to_char(created_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') || 'T' || lpad(id::text, 8, '0') AS created
       FROM wishlist ORDER BY priority, id`;

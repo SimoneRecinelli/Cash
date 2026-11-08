@@ -188,6 +188,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .wish:last-child { border-bottom: 0; }
 .wish .wbody { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; text-align: left; background: none; border: 0; padding: 14px 8px 14px 16px; color: var(--ink); font: inherit; cursor: pointer; }
 .wish.wchild { background: var(--bg); } .wish.wchild .wbody { padding: 9px 8px 9px 32px; } .wish.wchild .wt { font-weight: 500; font-size: 14px; } .wish.wchild .num { font-size: 14px; color: var(--muted); }
+.wish .wseen { font-size: 12px; margin-top: 4px; color: var(--muted); } .wish .wseen.down { color: var(--good); font-weight: 600; } .wish .wseen.up { color: var(--warn); }
 .wish .wt { font-weight: 600; word-break: break-word; }
 .wish .ws { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .wish .wp { font-size: 13px; margin-top: 6px; font-weight: 600; }
@@ -314,7 +315,8 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
 
   <section class="tab" id="tab-wish">
     <div class="sec"><h2>Lista dei desideri</h2><button class="add-mini" id="btnAddWish" aria-label="Aggiungi desiderio">+</button></div>
-    <div class="hint" id="wishSummary" style="margin:-4px 4px 12px"></div>
+    <div class="hint" id="wishSummary" style="margin:-4px 4px 8px"></div>
+    <button class="link" id="wishCheck" style="margin:0 0 10px 4px;text-align:left">Controlla i prezzi online adesso</button>
     <div class="card" id="wishList"></div>
     <details id="wishBoughtBox" hidden><summary id="wishBoughtSum">Già comprati</summary><div class="card" id="wishBought"></div></details>
   </section>
@@ -400,6 +402,7 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
   <div class="actions">
     <a class="btn2" id="wishOpen" target="_blank" rel="noopener noreferrer" hidden>Apri il link</a>
     <a class="btn2" id="wishSim">Simula questo acquisto</a>
+    <button class="btn2" id="wishUseSeen" hidden>Usa il prezzo rilevato</button>
     <button class="btn2" id="wishEdit">Modifica</button>
     <button class="btn2" id="wishBuy">Segna come comprato</button>
     <button class="btn2 danger" id="wishDel">Elimina</button>
@@ -561,7 +564,7 @@ try { KEY = localStorage.getItem('appkey') || ''; } catch (e) {}
 let type = 'expense', cat = 'Spesa', data = null;
 
 // Gli endpoint minori stanno tutti dietro a /api/hub?r=nome (limite di 12 funzioni di Vercel)
-const HUB = new Set(['balance', 'bonuses', 'goals', 'inbox', 'salaries', 'wishlist']);
+const HUB = new Set(['balance', 'bonuses', 'goals', 'inbox', 'pricecheck', 'salaries', 'wishlist']);
 function apiUrl(path) {
   const [name, qs] = path.split('?');
   return HUB.has(name) ? `/api/hub?r=${name}${qs ? '&' + qs : ''}` : '/api/' + path;
@@ -1058,6 +1061,18 @@ $('#balSave').onclick = async () => {
 const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
 const PRIO = { 1: ['Alta', 'p1'], 2: ['Media', ''], 3: ['Bassa', 'p3'] };
 const fullD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+function wishSeenText(x) {
+  if (!x.url) return '';
+  if (x.seen_price == null) {
+    const why = { blocked: 'il negozio blocca la lettura', noprice: 'prezzo non trovato nella pagina', gone: 'pagina non trovata', error: 'pagina non raggiungibile', invalid: 'link non controllabile' }[x.seen_status];
+    return `<div class="wseen">${x.seen_at ? 'Prezzo online non leggibile (' + esc(why || 'riprova più tardi') + ')' : 'Prezzo online: controllo in arrivo'}</div>`;
+  }
+  const diff = x.seen_price - (x.price - 0), same = Math.abs(diff) < 0.005;
+  const cls = same ? '' : diff < 0 ? 'down' : 'up';
+  const txt = same ? `Prezzo online ${eur.format(x.seen_price)} · uguale al tuo` : diff < 0 ? `Prezzo sceso a ${eur.format(x.seen_price)} (${eur.format(diff)} rispetto al tuo)` : `Prezzo online ${eur.format(x.seen_price)} (+${eur.format(diff)} rispetto al tuo)`;
+  const low = x.low_price != null && x.low_price < x.seen_price - 0.005 ? ` · minimo visto ${eur.format(x.low_price)}` : '';
+  return `<div class="wseen ${cls}">${esc(txt + low)}${x.seen_at ? ' · ' + esc(shortDate(x.seen_at)) : ''}</div>`;
+}
 function wishPlanText(p) {
   if (!p) return '';
   const when = p.status === 'now' ? ['now', '✓ Puoi comprarlo subito']
@@ -1072,7 +1087,7 @@ function wishGroups(open) {
   const ids = new Set(open.map((x) => x.id)), kids = {};
   const child = (x) => x.parent_id && x.parent_id !== x.id && ids.has(x.parent_id);
   open.filter(child).forEach((x) => (kids[x.parent_id] = kids[x.parent_id] || []).push(x));
-  const tops = open.filter((x) => !child(x)).map((x) => ({ ...x, price: x.price + (kids[x.id] || []).reduce((a, c) => a + c.price, 0) }));
+  const tops = open.filter((x) => !child(x)).map((x) => ({ ...x, ownPrice: x.price, price: x.price + (kids[x.id] || []).reduce((a, c) => a + c.price, 0) }));
   return { tops, kids };
 }
 function renderWish() {
@@ -1089,9 +1104,9 @@ function renderWish() {
       const sub = [x.installments > 1 ? `${x.installments} rate da ${eur.format(x.price / x.installments)}` : '', ch.length ? `compresi ${ch.length} accessori` : '', host(x.url), x.note].filter(Boolean).join(' · ');
       return `<div class="wish" data-id="${x.id}">
         <button class="wbody"><span style="min-width:0"><div class="wt">${esc(x.name)}<span class="pill ${pc}">${pl}</span></div>
-          ${sub ? `<div class="ws">${esc(sub)}</div>` : ''}${wishPlanText(x.plan)}</span><b class="num">${eur0.format(x.price)}</b></button>
+          ${sub ? `<div class="ws">${esc(sub)}</div>` : ''}${wishSeenText({ ...x, price: x.ownPrice })}${wishPlanText(x.plan)}</span><b class="num">${eur0.format(x.price)}</b></button>
         ${x.url ? `<a class="wopen" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>` +
-        ch.map((c) => `<div class="wish wchild" data-id="${c.id}"><button class="wbody"><span style="min-width:0"><div class="wt">+ ${esc(c.name)}</div></span><b class="num">${eur.format(c.price)}</b></button>
+        ch.map((c) => `<div class="wish wchild" data-id="${c.id}"><button class="wbody"><span style="min-width:0"><div class="wt">+ ${esc(c.name)}</div>${wishSeenText(c)}</span><b class="num">${eur.format(c.price)}</b></button>
           ${c.url ? `<a class="wopen" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>`).join('');
     }).join('');
     const tot = open.reduce((s, x) => s + x.price, 0);
@@ -1118,6 +1133,14 @@ function openWishForm(x) {
   if (!x) setTimeout(() => $('#wName').focus(), 250);
 }
 $('#btnAddWish').onclick = () => openWishForm(null);
+$('#wishCheck').onclick = async () => {
+  const b = $('#wishCheck'); b.disabled = true; b.textContent = 'Controllo in corso…';
+  try {
+    const r = await api('pricecheck', { method: 'POST', body: '{}' });
+    toast(r.checked ? `Letti ${r.read} prezzi su ${r.checked}` : 'Niente da controllare'); await load();
+  } catch (e) { alert(e.message); }
+  finally { b.disabled = false; b.textContent = 'Controlla i prezzi online adesso'; }
+};
 $('#wishSave').onclick = async () => {
   const price = parseNum($('#wPrice').value), n = $('#wN').value.trim() ? parseInt($('#wN').value, 10) : 1;
   if (!$('#wName').value.trim()) { $('#wishErr').textContent = 'Scrivi cosa vuoi comprare'; return; }
@@ -1147,9 +1170,18 @@ $('#tab-wish').addEventListener('click', async (e) => {
   const p = topX ? (SimCore.schedule(data, gt.tops).find((w) => w.id === x.id) || {}).plan : null;
   $('#wishActInfo').textContent = p ? (p.status === 'now' ? 'Con le priorità attuali puoi comprarlo subito.' : `Con le priorità attuali puoi comprarlo ${p.status === 'nextperiod' ? 'dal prossimo stipendio' : 'dal ' + fullD(p.start)}.`) : '';
   $('#wishOpen').hidden = !x.url; if (x.url) $('#wishOpen').href = x.url;
+  $('#wishUseSeen').hidden = !(x.seen_price != null && Math.abs(x.seen_price - x.price) >= 0.005);
+  $('#wishUseSeen').textContent = x.seen_price != null ? `Usa il prezzo rilevato (${eur.format(x.seen_price)})` : '';
   $('#wishSim').href = `/afford.html?name=${encodeURIComponent(x.name)}&price=${topX ? topX.price : x.price}&n=${x.installments}`;
   openSheet('wishActSheet');
 });
+$('#wishUseSeen').onclick = async () => {
+  const x = wishSel; if (!x || x.seen_price == null) return;
+  try {
+    await api('wishlist?id=' + x.id, { method: 'PUT', body: JSON.stringify({ name: x.name, price: x.seen_price, installments: x.installments, url: x.url, priority: x.priority, note: x.note, parent_id: x.parent_id }) });
+    closeSheets(); toast('Prezzo aggiornato'); load();
+  } catch (e) { alert(e.message); }
+};
 $('#wishEdit').onclick = () => { if (wishSel) openWishForm(wishSel); };
 $('#wishDel').onclick = async () => {
   const x = wishSel; if (!x || !confirm(`Eliminare “${x.name}”?`)) return;

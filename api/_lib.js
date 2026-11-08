@@ -119,6 +119,10 @@ function init() {
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
       await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parent_id int`;
+      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_price numeric(12,2)`;
+      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS low_price numeric(12,2)`;
+      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_at timestamptz`;
+      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_status text NOT NULL DEFAULT ''`;
       await sql`CREATE TABLE IF NOT EXISTS category_rules (
         id serial PRIMARY KEY,
         pattern text NOT NULL UNIQUE,
@@ -212,6 +216,14 @@ export async function checkTotp(code) {
 function authorized(req, mode) {
   const appKey = process.env.APP_KEY || '';
   const hdrKey = String(req.headers['x-app-key'] || '');
+  if (mode === 'cron') {
+    // Cron di Vercel (user-agent vercel-cron, oppure CRON_SECRET se impostata) o app con sessione valida.
+    // L'azione è innocua (legge pagine di negozi e salva un prezzo) e limitata a un controllo ogni 6 ore.
+    const cs = process.env.CRON_SECRET || '';
+    const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (cs ? safeEq(bearer, cs) : /^vercel-cron\//i.test(String(req.headers['user-agent'] || ''))) return true;
+    return authorized(req, 'session');
+  }
   if (mode === 'widget') {
     // Sola lettura per widget/notifiche: chiave propria, disattivata finché WIDGET_KEY non è impostata
     const wk = process.env.WIDGET_KEY || '';
