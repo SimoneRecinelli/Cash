@@ -46,6 +46,6 @@ export function withTx(f, list) {
 
 // Come fa il server: delta = somma dei movimenti registrati dopo il saldo.
 export function input(f) {
-  const d = f.transactions.filter((x) => x.fresh).reduce((a, x) => a + (x.type === 'income' ? x.amount : -x.amount), 0);
+  const d = f.transactions.filter((x) => x.fresh && !x.refund).reduce((a, x) => a + (x.type === 'income' ? x.amount : -x.amount), 0);
   return { ...f, delta: [{ d }] };
 }

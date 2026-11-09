@@ -31,7 +31,7 @@ export async function loadSummary() {
     // Movimenti registrati dopo l'ultima volta in cui hai inserito il saldo
     sql`SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0)::float8 AS d
         FROM transactions
-        WHERE created_at > (SELECT balance_set_at FROM settings WHERE id = 1)`,
+        WHERE created_at > (SELECT balance_set_at FROM settings WHERE id = 1) AND NOT refund`,
     sql`SELECT id, amount::float8 AS amount, to_char(date, 'YYYY-MM-DD') AS date FROM goals ORDER BY date, id`,
     sql`SELECT to_char(date, 'YYYY-MM-DD') AS date, amount::float8 AS amount FROM salary_overrides ORDER BY date`,
     sql`SELECT to_char(date, 'YYYY-MM-DD') AS date, balance::float8 AS balance FROM balance_history

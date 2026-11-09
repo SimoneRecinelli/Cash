@@ -260,13 +260,13 @@ test('mesi chiusi: variazione del saldo tra le fine di due periodi, solo con fot
   assert.deepEqual(closedPeriods([], p, 9), []);
 });
 
-test('movimento rimborsato da altri: il saldo scende ma budget, spese e categorie non cambiano', () => {
+test('movimento rimborsato da altri: saldo, budget, spese e categorie restano come se non esistesse', () => {
   const base = computeSummary(input(withTx(fixture({ today: '2026-11-10' }), [{ amount: 20, category: 'Spesa' }])));
   const f = withTx(fixture({ today: '2026-11-10' }), [{ amount: 20, category: 'Spesa' }, { amount: 98, category: 'Altro', note: 'Airbnb' }]);
   f.transactions = f.transactions.map((x) => (x.note === 'Airbnb' ? { ...x, refund: true } : x));
   const inp = input(f);
   const r = computeSummary(inp);
-  assert.ok(near(r.balance, base.balance - 98), 'saldo include la spesa');
+  assert.ok(near(r.balance, base.balance), 'il saldo non cambia');
   assert.ok(near(r.totals.spent, base.totals.spent));
   assert.ok(near(r.totals.remaining, base.totals.remaining));
   assert.ok(near(r.totals.budget, base.totals.budget));
