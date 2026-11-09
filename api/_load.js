@@ -20,7 +20,7 @@ export async function loadSummary() {
   const [transactions, recurring, bonuses, delta, goalRows, overrides, history] = await Promise.all([
     sql`SELECT id, type, amount::float8 AS amount, category, note,
                to_char(date, 'YYYY-MM-DD') AS date,
-               (created_at > (SELECT balance_set_at FROM settings WHERE id = 1)) AS fresh
+               (created_at > (SELECT balance_set_at FROM settings WHERE id = 1)) AS fresh, refund
         FROM transactions
         WHERE date >= ${p.start}::date AND date < ${p.end}::date
         ORDER BY date DESC, id DESC LIMIT 1000`,

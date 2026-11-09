@@ -27,8 +27,8 @@ export default handler(async (req, res) => {
       const done = await sql`UPDATE inbox SET status = 'done' WHERE id = ${id} AND status = 'new' RETURNING id`;
       if (!done.length) return res.status(409).json({ error: 'Messaggio già gestito' });
       await sql`
-        INSERT INTO transactions (type, amount, category, note, date)
-        VALUES (${b.type}, ${Math.round(amount * 100) / 100}, ${category}, ${note}, ${date}::date)`;
+        INSERT INTO transactions (type, amount, category, note, date, refund)
+        VALUES (${b.type}, ${Math.round(amount * 100) / 100}, ${category}, ${note}, ${date}::date, ${b.refund === true})`;
       return res.status(201).json({ ok: true });
     }
     return res.status(400).json({ error: 'Azione non valida' });

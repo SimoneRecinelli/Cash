@@ -15,6 +15,7 @@ export default handler(async (req, res) => {
     const category = String(b.category || 'Altro').trim().slice(0, 40) || 'Altro';
     const note = String(b.note || '').trim().slice(0, 200);
     const date = b.date || todayStr();
+    const refund = b.refund === true;
 
     if (!['expense', 'income'].includes(b.type)) {
       return res.status(400).json({ error: 'Tipo non valido' });
@@ -28,13 +29,13 @@ export default handler(async (req, res) => {
     // inBalance: il pagamento è già compreso nel saldo inserito → lo registro "prima" del saldo, così non viene detratto di nuovo
     const [row] = b.inBalance === true
       ? await sql`
-          INSERT INTO transactions (type, amount, category, note, date, created_at)
-          VALUES (${b.type}, ${amt}, ${category}, ${note}, ${date}::date,
+          INSERT INTO transactions (type, amount, category, note, date, refund, created_at)
+          VALUES (${b.type}, ${amt}, ${category}, ${note}, ${date}::date, ${refund},
                   COALESCE((SELECT balance_set_at FROM settings WHERE id = 1) - interval '1 minute', now()))
           RETURNING id`
       : await sql`
-          INSERT INTO transactions (type, amount, category, note, date)
-          VALUES (${b.type}, ${amt}, ${category}, ${note}, ${date}::date)
+          INSERT INTO transactions (type, amount, category, note, date, refund)
+          VALUES (${b.type}, ${amt}, ${category}, ${note}, ${date}::date, ${refund})
           RETURNING id`;
     return res.status(201).json({ id: row.id });
   }
@@ -51,7 +52,7 @@ export default handler(async (req, res) => {
     if (!validDate(b.date)) return res.status(400).json({ error: 'Data non valida' });
     const rows = await sql`
       UPDATE transactions
-      SET type = ${b.type}, amount = ${Math.round(amount * 100) / 100}, category = ${category}, note = ${note}, date = ${b.date}::date
+      SET type = ${b.type}, amount = ${Math.round(amount * 100) / 100}, category = ${category}, note = ${note}, date = ${b.date}::date, refund = ${b.refund === true}
       WHERE id = ${id} RETURNING id`;
     if (!rows.length) return res.status(404).json({ error: 'Movimento non trovato' });
     // “Ricorda”: da ora i movimenti di questo negozio finiscono in questa categoria

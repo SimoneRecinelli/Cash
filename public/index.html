@@ -369,6 +369,8 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <input id="fNote" maxlength="200" placeholder="es. Caffè con Marco" autocomplete="off">
   <label for="fDate">Data</label>
   <input id="fDate" type="date">
+  <label class="chkrow"><input type="checkbox" id="fRefund"> Me lo rimborsa qualcuno (non contarlo nelle spese)</label>
+  <div class="hint" id="refundHint" style="margin:2px 0 0">Il saldo lo tiene in conto (i soldi sono usciti davvero), ma budget, totali e categorie lo ignorano. Quando arriva il rimborso, segna anche quell’entrata con questa spunta.</div>
   <label class="chkrow" id="rememberRow" hidden><input type="checkbox" id="fRemember"> Ricorda questa categoria per questo negozio</label>
   <div class="err" id="addErr"></div>
   <button class="primary" id="addSave">Aggiungi</button>
@@ -677,8 +679,8 @@ function render(d) {
       const inc = x.type === 'income';
       html += `<button class="tx ${inc ? 'inc' : ''}" data-id="${x.id}">
         <span class="dot">${esc(x.category.slice(0, 2).toUpperCase())}</span>
-        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}</div></span>
-        <span class="amt num">${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
+        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}${x.refund ? ' · <b style="color:var(--warn)">rimborsato da altri, non conteggiato</b>' : ''}</div></span>
+        <span class="amt num" ${x.refund ? 'style="opacity:.55;text-decoration:line-through"' : ''}>${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
     }
     list.innerHTML = html;
   }
@@ -872,6 +874,7 @@ function openAdd({ edit = null, inbox = null } = {}) {
   $('#addSave').textContent = edit ? 'Salva' : 'Aggiungi';
   $('#txDel').hidden = !edit;
   $('#rememberRow').hidden = !edit; $('#fRemember').checked = false;
+  $('#fRefund').checked = !!(edit && edit.refund);
   $('#inbMsg').hidden = !inbox; if (inbox) $('#inbMsg').textContent = inbox.text.slice(0, 400);
   const amt = base && base.amount != null ? base.amount : '';
   $('#fAmount').value = amt === '' ? '' : Number(amt).toFixed(2).replace('.', ',');
@@ -885,7 +888,7 @@ $('#fab').onclick = () => openAdd();
 $('#addSave').onclick = async () => {
   const amount = parseNum($('#fAmount').value);
   if (!(amount > 0)) { $('#addErr').textContent = 'Inserisci un importo valido'; return; }
-  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal() };
+  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal(), refund: $('#fRefund').checked };
   $('#addSave').disabled = true;
   try {
     if (editTx) {

@@ -9,6 +9,12 @@ const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
 export function computeSummary({ s, today, transactions, recurring, bonuses, delta, goalRows, overrides, history = [] }) {
   const p = period(today, s.salary_day);
 
+  // Movimenti "rimborsati da altri" (es. biglietti pagati da te e ridati da tuo padre): il denaro è uscito davvero
+  // (il saldo stimato li include), ma non contano come spese né come entrate nel budget.
+  const allTx = transactions;
+  transactions = allTx.filter((x) => !x.refund);
+  const neutral = allTx.filter((x) => x.refund);
+
   // Stipendio di una data: quello indicato per quel mese, altrimenti lo standard
   const ovr = new Map(overrides.map((o) => [o.date, o.amount]));
   const salaryOf = (d) => (ovr.has(d) ? ovr.get(d) : s.salary);
@@ -109,7 +115,8 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
   let goals = [];
   if (goalMode) {
     // Saldo a inizio finestra: non cambia se spendi o incassi dopo (così spendere riduce il budget 1:1)
-    base = balance + spent - extra - arrivedBonus;
+    const neutralNet = sum(neutral.filter((x) => !entry || x.fresh), (x) => (x.type === 'expense' ? x.amount : -x.amount));
+    base = balance + spent - extra - arrivedBonus + neutralNet;
     const paidRec = sum(matched.filter((m) => m.inWin), (m) => m.amount);
     spentBar = spent - paidRec - habitSpent;
     const lp = Math.max(1, diffDays(s0, p.end));
@@ -223,7 +230,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     recurring: rec,
     bonuses: bon,
     categories,
-    transactions,
+    transactions: allTx,
  };
 }
 
