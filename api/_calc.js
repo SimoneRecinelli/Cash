@@ -48,9 +48,6 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
   // Cene del sabato: quota = importo a sabato × sabati del periodo (se non impostato, vale la quota mensile fissa)
   const weekly = s.habit_weekly || 0;
   const satCount = (a, b) => { let n = 0; for (let d = a; d < b; d = addDaysStr(d, 1)) if (new Date(d + 'T00:00:00Z').getUTCDay() === 6) n++; return n; };
-  const curHabit = leftSet ? s.habit_left : weekly > 0 ? weekly * satCount(s0, p.end) : habit * frac;
-  const habitSpent = Math.min(curHabit, sum(win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti'), (x) => x.amount));
-  const habitLeft = Math.max(0, curHabit - habitSpent);
   const habitMonths = (from, D) => {
     // mesi (frazionari) di periodo di stipendio compresi tra from e D
     const first = period(from, s.salary_day);
@@ -109,6 +106,34 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     });
   }
   const reserved = sum(rec.filter((r) => r.status === 'pending' && (!goalMode || r.due >= s0)), (r) => r.amount);
+
+  // ---- Cene: ogni sabato ha la sua quota; si "conferma" con i movimenti di quel giorno ----
+  // Una spesa fatta di sabato conta come cena (salvo categorie chiaramente diverse, come la benzina: te lo chiedo);
+  // una spesa in "Ristoranti" fuori dal sabato la conto come cena ma te lo chiedo. Le ricorrenti non sono cene.
+  // Sabato già passato: la quota riservata è quello che hai davvero speso (max l'importo del sabato), il resto si libera.
+  const NON_DINNER = new Set(['Benzina', 'Salute', 'Casa', 'Abbonamenti', 'Capelli', 'Trasporti']);
+  const isSat = (d) => new Date(d + 'T00:00:00Z').getUTCDay() === 6;
+  const dinnerState = (x) => {
+    if (x.type !== 'expense' || x.refund || used.has(x.id)) return 'no';
+    if (x.dinner === true) return 'yes';
+    if (x.dinner === false) return 'no';
+    if (isSat(x.date)) return NON_DINNER.has(x.category) ? 'ask' : 'yes';
+    return x.category === 'Ristoranti' ? 'ask' : 'no';
+  };
+  const countsAsDinner = (x) => { const st = dinnerState(x); return st === 'yes' || (st === 'ask' && x.category === 'Ristoranti'); };
+  const dinnerSpend = weekly > 0 ? win.filter(countsAsDinner) : win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti');
+  let curHabit;
+  if (leftSet) curHabit = s.habit_left;
+  else if (weekly > 0) {
+    curHabit = 0;
+    for (let d = s0; d < p.end; d = addDaysStr(d, 1)) {
+      if (!isSat(d)) continue;
+      curHabit += d < today ? Math.min(weekly, sum(dinnerSpend.filter((x) => x.date === d), (x) => x.amount)) : weekly;
+    }
+  } else curHabit = habit * frac;
+  const habitSpent = Math.min(curHabit, sum(dinnerSpend, (x) => x.amount));
+  const habitLeft = Math.max(0, curHabit - habitSpent);
+  const dinnerAsk = win.filter((x) => weekly > 0 && dinnerState(x) === 'ask').map((x) => ({ id: x.id, note: x.note, category: x.category, amount: x.amount, date: x.date, sat: isSat(x.date) }));
 
   // ---- Calcolo del budget del periodo ----
   let remaining, budget, spentBar, goal = null, base = null, projection = [];
@@ -234,7 +259,8 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     recurring: rec,
     bonuses: bon,
     categories,
-    transactions: allTx,
+    transactions: allTx.map((x) => ({ ...x, dn: weekly > 0 ? dinnerState(x) : 'no' })),
+    dinnerAsk,
  };
 }
 

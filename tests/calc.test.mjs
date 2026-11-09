@@ -283,9 +283,44 @@ test('cene del sabato: quota = importo × sabati del periodo e dei mesi fino all
   // fino al 31/12: 4 sabati del periodo + 12, 19, 26/12 = 7
   approx(goalOf(r, '2026-12-31').habit, 350, 'cene fino al 31/12');
   // un periodo da 5 sabati: 9/1 → 9/2 2027 (sabati 9, 16, 23, 30/1 = 4) e 9/10 → 9/11 2026 (10, 17, 24, 31/10 = 4): usa un periodo con 5
-  const g = fixture({ today: '2026-05-10' }); // 9/5 → 9/6 2026: sabati 9, 16, 23, 30/5 e 6/6 = 5
+  const g = fixture({ today: '2026-05-09' }); // 9/5 → 9/6 2026: sabati 9, 16, 23, 30/5 e 6/6 = 5 (il 9/5 è oggi: ancora da spendere)
   g.s = { ...g.s, balance_date: '2026-05-09', habit_weekly: 50, habit_left: null, habit_left_for: null };
   g.goalRows = [{ id: 1, amount: 100, date: '2026-12-31' }];
   g.transactions = [];
   approx(computeSummary(input(g)).totals.habitLeft, 250, 'periodo con 5 sabati');
+});
+
+// ---- Cene del sabato confermate dai movimenti ----
+const dinnerFix = (txs) => {
+  const f = fixture({ today: '2026-11-16' }); // lunedì; sabati del periodo 9/11→9/12: 14, 21, 28/11 e 5/12
+  f.s = { ...f.s, habit_weekly: 50, habit_left: null, habit_left_for: null, margin: 0 };
+  return computeSummary(input(withTx(f, txs)));
+};
+
+test('cene: un sabato passato senza movimenti libera la sua quota', () => {
+  approx(dinnerFix([]).totals.habitLeft, 150, 'restano i 3 sabati futuri'); // 14/11 è passato e non hai speso
+});
+
+test('cene: la spesa del sabato passato consuma la quota; se supera i 50 si prende dai sabati che restano', () => {
+  const r = dinnerFix([{ amount: 40, category: 'Ristoranti', date: '2026-11-14' }]);
+  approx(r.totals.habitLeft, 150, 'quota passata = 40 consumata, restano 3 sabati × 50');
+  approx(r.totals.spentBar, 0, 'la cena non pesa sul budget libero');
+  const over = dinnerFix([{ amount: 70, category: 'Ristoranti', date: '2026-11-14' }]);
+  approx(over.totals.spentBar, 0, 'tutta la cena resta nei 200: non pesa sul libero');
+  approx(over.totals.habitLeft, 130, 'i 20 in più si prendono dai sabati che restano');
+});
+
+test('cene: una spesa di sabato conta come cena; benzina di sabato e ristoranti fuori sabato vanno confermati', () => {
+  const r = dinnerFix([
+    { id: 201, amount: 12, category: 'Altro', date: '2026-11-14' }, // sabato → cena
+    { id: 202, amount: 30, category: 'Benzina', date: '2026-11-14' }, // sabato ma benzina → chiedo, non conta come cena
+    { id: 203, amount: 25, category: 'Ristoranti', date: '2026-11-12' }, // ristorante fuori sabato → conta, ma chiedo
+  ]);
+  assert.deepEqual(r.dinnerAsk.map((x) => x.id).sort(), [202, 203]);
+  approx(r.totals.spentBar, 30, 'solo la benzina pesa sul budget libero');
+  const ok = dinnerFix([{ id: 202, amount: 30, category: 'Benzina', date: '2026-11-14', dinner: true }]);
+  approx(ok.totals.spentBar, 0, 'confermata come cena');
+  assert.equal(ok.dinnerAsk.length, 0);
+  const no = dinnerFix([{ id: 203, amount: 25, category: 'Ristoranti', date: '2026-11-12', dinner: false }]);
+  approx(no.totals.spentBar, 25, 'ristorante non cena = spesa libera');
 });

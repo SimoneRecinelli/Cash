@@ -88,6 +88,7 @@ function init() {
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS starts date`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS until date`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS flex boolean NOT NULL DEFAULT false`;
+      await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS dinner boolean`;
       await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS refund boolean NOT NULL DEFAULT false`;
       await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS installment boolean NOT NULL DEFAULT false`;
       await sql`CREATE TABLE IF NOT EXISTS inbox (

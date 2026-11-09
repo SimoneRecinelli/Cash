@@ -44,6 +44,12 @@ export default handler(async (req, res) => {
     const id = Number(req.query.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID non valido' });
     const b = req.body && typeof req.body === 'object' ? req.body : {};
+    // Risposta rapida "era una cena?": cambia solo questo campo (true = cena, false = no, null = automatico)
+    if (Object.keys(b).length === 1 && 'dinner' in b) {
+      if (![true, false, null].includes(b.dinner)) return res.status(400).json({ error: 'Valore non valido' });
+      const r = await sql`UPDATE transactions SET dinner = ${b.dinner} WHERE id = ${id} RETURNING id`;
+      return r.length ? res.status(200).json({ ok: true }) : res.status(404).json({ error: 'Movimento non trovato' });
+    }
     const amount = Number(b.amount);
     const category = String(b.category || 'Altro').trim().slice(0, 40) || 'Altro';
     const note = String(b.note || '').trim().slice(0, 200);
@@ -55,6 +61,7 @@ export default handler(async (req, res) => {
       SET type = ${b.type}, amount = ${Math.round(amount * 100) / 100}, category = ${category}, note = ${note}, date = ${b.date}::date, refund = ${b.refund === true}
       WHERE id = ${id} RETURNING id`;
     if (!rows.length) return res.status(404).json({ error: 'Movimento non trovato' });
+    if ([true, false, null].includes(b.dinner)) await sql`UPDATE transactions SET dinner = ${b.dinner} WHERE id = ${id}`;
     // “Ricorda”: da ora i movimenti di questo negozio finiscono in questa categoria
     if (b.remember === true && note) {
       await sql`

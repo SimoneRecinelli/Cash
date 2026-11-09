@@ -258,6 +258,13 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
 .homecard .s { font-size: 13px; color: var(--muted); }
 .homecard .s b { color: var(--ink); }
 .homecard[hidden] { display: none; }
+.dinask { padding: 14px 16px; margin: 12px 0 0; border-left: 4px solid var(--warn); }
+.dinask[hidden] { display: none; }
+.dinask b { font-size: 15px; }
+.dinask .q { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--line); margin-top: 10px; }
+.dinask .q .tx1 { flex: 1; min-width: 0; font-size: 14px; } .dinask .q .tx1 small { display: block; color: var(--muted); font-size: 12px; }
+.dinask .q button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 8px 12px; font: 600 13px inherit; cursor: pointer; }
+.dinask .q button.yes { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .more { display: block; width: 100%; border: 0; background: none; color: var(--accent); font: 600 14px inherit; padding: 12px 0 2px; cursor: pointer; }
 </style>
 </head>
@@ -272,6 +279,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   </header>
 
   <section class="tab on" id="tab-home">
+    <div class="card dinask" id="homeDinner" hidden></div>
     <button class="card inbcard" id="homeBal" hidden><span><b>Controlla il saldo</b><div class="hint" id="homeBalSub" style="margin:2px 0 0"></div></span><span aria-hidden="true">›</span></button>
     <button class="card inbcard" id="homeInbox" data-go="mov" hidden><span><b id="homeInboxN"></b><div class="hint" style="margin:2px 0 0">Messaggi della banca che non ho saputo registrare da solo</div></span><span aria-hidden="true">›</span></button>
     <section class="hero" id="hero" hidden>
@@ -369,6 +377,8 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <input id="fNote" maxlength="200" placeholder="es. Caffè con Marco" autocomplete="off">
   <label for="fDate">Data</label>
   <input id="fDate" type="date">
+  <div id="dinnerBox" hidden><label for="fDinner">Cena del sabato</label>
+  <select id="fDinner"><option value="auto">Automatico (sabato = cena)</option><option value="yes">Sì, è una cena</option><option value="no">No, non è una cena</option></select></div>
   <label class="chkrow"><input type="checkbox" id="fRefund"> Me lo rimborsa qualcuno (non contarlo nelle spese)</label>
   <div class="hint" id="refundHint" style="margin:2px 0 0">È come se non esistesse: né budget, né saldo stimato, né totali, né categorie lo contano. Quando arriva il rimborso, segna anche quell’entrata con questa spunta. Nel frattempo il saldo reale sarà più basso di quello stimato.</div>
   <label class="chkrow" id="rememberRow" hidden><input type="checkbox" id="fRemember"> Ricorda questa categoria per questo negozio</label>
@@ -679,7 +689,7 @@ function render(d) {
       const inc = x.type === 'income';
       html += `<button class="tx ${inc ? 'inc' : ''}" data-id="${x.id}">
         <span class="dot">${esc(x.category.slice(0, 2).toUpperCase())}</span>
-        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}${x.refund ? ' · <b style="color:var(--warn)">rimborsato da altri, non conteggiato</b>' : ''}</div></span>
+        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}${x.dn === 'yes' ? ' · cena' : x.dn === 'ask' ? ' · <b style="color:var(--warn)">cena? da confermare</b>' : ''}${x.refund ? ' · <b style="color:var(--warn)">rimborsato da altri, non conteggiato</b>' : ''}</div></span>
         <span class="amt num" ${x.refund ? 'style="opacity:.55;text-decoration:line-through"' : ''}>${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
     }
     list.innerHTML = html;
@@ -776,6 +786,10 @@ function render(d) {
     <div class="t1">${m.guess.amount != null ? eur.format(m.guess.amount) : 'Importo non trovato'} · ${esc(m.reason)}</div>
     <div class="t2 txt">${esc(m.text.slice(0, 160))}</div>
     <div class="acts"><button class="btn2 inbOk">Registra</button><button class="btn2 inbNo">Scarta</button></div></div>`).join('');
+  const da = d.dinnerAsk || [];
+  const dd = $('#homeDinner'); dd.hidden = !da.length;
+  dd.innerHTML = da.length ? `<b>${da.length === 1 ? 'Questa spesa fa parte della cena?' : 'Queste spese fanno parte della cena?'}</b><div class="hint" style="margin:2px 0 0">Le cene del sabato (${eur0.format(d.settings.habit_weekly || 0)} a sabato) sono già riservate nel budget: dimmi quali spese le consumano.</div>` +
+    da.slice(0, 5).map((x) => `<div class="q" data-id="${x.id}"><span class="tx1">${esc(x.note || x.category)} · ${eur.format(x.amount)}<small>${esc(x.category)} · ${esc(dayLabel(x.date))}${x.sat ? '' : ' · non di sabato'}</small></span><button class="yes" data-a="1">Sì, cena</button><button data-a="0">No</button></div>`).join('') : '';
   $('#homeInbox').hidden = !ib.length;
   $('#homeInboxN').textContent = ib.length === 1 ? '1 messaggio da controllare' : ib.length + ' messaggi da controllare';
 
@@ -875,6 +889,8 @@ function openAdd({ edit = null, inbox = null } = {}) {
   $('#txDel').hidden = !edit;
   $('#rememberRow').hidden = !edit; $('#fRemember').checked = false;
   $('#fRefund').checked = !!(edit && edit.refund);
+  $('#dinnerBox').hidden = !(edit && edit.type === 'expense' && data && data.settings && data.settings.habit_weekly > 0);
+  $('#fDinner').value = edit && edit.dinner === true ? 'yes' : edit && edit.dinner === false ? 'no' : 'auto';
   $('#inbMsg').hidden = !inbox; if (inbox) $('#inbMsg').textContent = inbox.text.slice(0, 400);
   const amt = base && base.amount != null ? base.amount : '';
   $('#fAmount').value = amt === '' ? '' : Number(amt).toFixed(2).replace('.', ',');
@@ -888,7 +904,7 @@ $('#fab').onclick = () => openAdd();
 $('#addSave').onclick = async () => {
   const amount = parseNum($('#fAmount').value);
   if (!(amount > 0)) { $('#addErr').textContent = 'Inserisci un importo valido'; return; }
-  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal(), refund: $('#fRefund').checked };
+  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal(), refund: $('#fRefund').checked, ...(editTx && !$('#dinnerBox').hidden ? { dinner: { auto: null, yes: true, no: false }[$('#fDinner').value] } : {}) };
   $('#addSave').disabled = true;
   try {
     if (editTx) {
@@ -1072,6 +1088,12 @@ function openBalance() {
 }
 $('#btnCheck').onclick = openBalance;
 $('#homeBal').onclick = openBalance;
+$('#homeDinner').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const q = b.closest('.q'); b.disabled = true;
+  try { await api('transactions?id=' + q.dataset.id, { method: 'PUT', body: JSON.stringify({ dinner: b.dataset.a === '1' }) }); toast(b.dataset.a === '1' ? 'Contata come cena' : 'Non è una cena'); load(); }
+  catch (err) { alert(err.message); b.disabled = false; }
+});
 $('#balSave').onclick = async () => {
   const v = parseNum($('#bAmount').value);
   if (isNaN(v)) { $('#balErr').textContent = 'Inserisci il saldo del conto'; return; }
