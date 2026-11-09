@@ -45,7 +45,10 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
   // se il saldo è stato inserito a metà periodo, la parte proporzionale ai giorni che restano.
   const frac = entry ? diffDays(s0, p.end) / diffDays(p.start, p.end) : 1;
   const leftSet = s.habit_left !== null && s.habit_left_for === p.start;
-  const curHabit = leftSet ? s.habit_left : habit * frac;
+  // Cene del sabato: quota = importo a sabato × sabati del periodo (se non impostato, vale la quota mensile fissa)
+  const weekly = s.habit_weekly || 0;
+  const satCount = (a, b) => { let n = 0; for (let d = a; d < b; d = addDaysStr(d, 1)) if (new Date(d + 'T00:00:00Z').getUTCDay() === 6) n++; return n; };
+  const curHabit = leftSet ? s.habit_left : weekly > 0 ? weekly * satCount(s0, p.end) : habit * frac;
   const habitSpent = Math.min(curHabit, sum(win.filter((x) => x.type === 'expense' && x.category === 'Ristoranti'), (x) => x.amount));
   const habitLeft = Math.max(0, curHabit - habitSpent);
   const habitMonths = (from, D) => {
@@ -135,7 +138,10 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
         }
         return r.amount * n;
       });
-      const habitTotal = D <= p.end ? curHabit * (diffDays(s0, D) / Math.max(1, diffDays(s0, p.end))) : curHabit + habit * habitMonths(p.end, D);
+      const D1 = addDaysStr(D, 1); // le cene del giorno D contano
+      const habitTotal = D <= p.end
+        ? (weekly > 0 && !leftSet ? weekly * satCount(s0, D1) : curHabit * (diffDays(s0, D) / Math.max(1, diffDays(s0, p.end))))
+        : curHabit + (weekly > 0 ? weekly * satCount(p.end, D1) : habit * habitMonths(p.end, D));
       return { futBonus, futureIncome, recurringTotal, habitTotal, end: base + futureIncome - recurringTotal - habitTotal };
     };
     goals = active.map((g) => {
@@ -199,7 +205,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
 
   return {
     today,
-    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, margin: s.margin, habit_left: leftSet ? s.habit_left : null },
+    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, habit_weekly: weekly, margin: s.margin, habit_left: leftSet ? s.habit_left : null },
     period: p,
     totals: {
       income: salaryOf(p.start) + extra + arrivedBonus,

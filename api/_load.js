@@ -8,7 +8,7 @@ export async function loadSummary() {
 
   const [s] = await sql`
     SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
-           habit_monthly::float8 AS habit, habit_left::float8 AS habit_left,
+           habit_monthly::float8 AS habit, habit_weekly::float8 AS habit_weekly, habit_left::float8 AS habit_left,
            to_char(habit_left_for, 'YYYY-MM-DD') AS habit_left_for, safety_margin::float8 AS margin,
            balance_ref::float8 AS balance_ref,
            to_char(balance_set_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD') AS balance_date

@@ -6,7 +6,7 @@ export default handler(async (req, res) => {
   if (req.method === 'GET') {
     const [s] = await sql`
       SELECT salary::float8 AS salary, salary_day, savings_goal::float8 AS savings_goal,
-             habit_monthly::float8 AS habit_monthly, safety_margin::float8 AS safety_margin
+             habit_monthly::float8 AS habit_monthly, habit_weekly::float8 AS habit_weekly, safety_margin::float8 AS safety_margin
       FROM settings WHERE id = 1`;
     return res.status(200).json(s);
   }
@@ -17,6 +17,7 @@ export default handler(async (req, res) => {
     const day = Number(b.salary_day);
     const margin = b.safety_margin === undefined || b.safety_margin === '' || b.safety_margin === null ? 0 : Number(b.safety_margin);
     const habit = b.habit_monthly === undefined || b.habit_monthly === '' || b.habit_monthly === null ? 0 : Number(b.habit_monthly);
+    const weekly = b.habit_weekly === undefined || b.habit_weekly === '' || b.habit_weekly === null ? 0 : Number(b.habit_weekly);
     const hasLeft = b.habit_left !== undefined && b.habit_left !== null && b.habit_left !== '';
     const left = hasLeft ? Number(b.habit_left) : null;
     if (hasLeft && (!Number.isFinite(left) || left < 0 || left > 10_000_000)) {
@@ -31,6 +32,9 @@ export default handler(async (req, res) => {
     if (!Number.isFinite(habit) || habit < 0 || habit > 10_000_000) {
       return res.status(400).json({ error: 'Spesa abituale non valida' });
     }
+    if (!Number.isFinite(weekly) || weekly < 0 || weekly > 100_000) {
+      return res.status(400).json({ error: 'Cena del sabato non valida' });
+    }
     if (!Number.isFinite(margin) || margin < 0 || margin > 10_000_000) {
       return res.status(400).json({ error: 'Margine di sicurezza non valido' });
     }
@@ -44,7 +48,7 @@ export default handler(async (req, res) => {
       UPDATE settings
       SET salary = ${Math.round(salary * 100) / 100},
           salary_day = ${day},
-          habit_monthly = ${Math.round(habit * 100) / 100},
+          habit_weekly = ${Math.round(weekly * 100) / 100},
           safety_margin = ${Math.round(margin * 100) / 100}
       WHERE id = 1`;
     {

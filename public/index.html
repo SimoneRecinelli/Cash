@@ -440,9 +440,9 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <label for="sDay">Giorno in cui arriva lo stipendio</label>
   <input id="sDay" inputmode="numeric" placeholder="es. 27">
   <div class="hint">Il periodo di budget va da questo giorno al successivo. Lo stipendio viene contato in automatico: non registrarlo come entrata.</div>
-  <label for="sHabit">Spese abituali al mese (€)</label>
-  <input id="sHabit" inputmode="decimal" placeholder="es. 200 per le cene">
-  <div class="hint">Quanto spendi di solito in cene e uscite. Lo tolgo dal margine degli obiettivi per ogni mese che resta; le spese in categoria “Ristoranti” lo consumano e non ti riducono il budget libero.</div>
+  <label for="sHabit">Cena del sabato (€ a sabato)</label>
+  <input id="sHabit" inputmode="decimal" placeholder="es. 50">
+  <div class="hint">Quanto spendi ogni sabato in cene e uscite. Conto i sabati che ci sono nel periodo (4 o 5) e li tolgo dal margine degli obiettivi; le spese in categoria “Ristoranti” li consumano e non ti riducono il budget libero.</div>
   <label for="sMargin">Margine di sicurezza (€)</label>
   <input id="sMargin" inputmode="decimal" placeholder="es. 200">
   <div class="hint">Una riserva che tengo fuori dal budget e dal simulatore: un acquisto è “sì” solo se agli obiettivi resta almeno questa cifra.</div>
@@ -938,7 +938,7 @@ function openSettings() {
   $('#sSalary').value = s.salary || ''; $('#sDay').value = s.salary_day;
   $('#sLeft').value = s.habit_left != null ? String(s.habit_left).replace('.', ',') : '';
   $('#sMargin').value = s.margin ? String(s.margin).replace('.', ',') : '';
-  $('#sHabit').value = s.habit ? String(s.habit).replace('.', ',') : '';
+  $('#sHabit').value = s.habit_weekly ? String(s.habit_weekly).replace('.', ',') : '';
   $('#sBal').value = data && data.balance != null ? data.balance.toFixed(2).replace('.', ',') : '';
   balPrefill = $('#sBal').value;
   $('#setErr').textContent = '';
@@ -971,7 +971,7 @@ $('#setSave').onclick = async () => {
   if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0)) || (marginStr && !(parseNum(marginStr) >= 0)) || (leftStr && !(parseNum(leftStr) >= 0))) {
     $('#setErr').textContent = 'Controlla i valori inseriti'; return;
   }
-  const body = { salary, salary_day: day, habit_monthly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0, habit_left: leftStr ? parseNum(leftStr) : '' };
+  const body = { salary, salary_day: day, habit_weekly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0, habit_left: leftStr ? parseNum(leftStr) : '' };
   if (balStr && balStr !== balPrefill) body.balance = parseNum(balStr);
   try {
     await api('settings', { method: 'PUT', body: JSON.stringify(body) });

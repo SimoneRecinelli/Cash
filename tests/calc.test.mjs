@@ -273,3 +273,19 @@ test('movimento rimborsato da altri: saldo, budget, spese e categorie restano co
   assert.deepEqual(r.categories, base.categories);
   assert.equal(r.transactions.length, 2); // resta visibile nell'elenco
 });
+
+test('cene del sabato: quota = importo × sabati del periodo e dei mesi fino alla data', () => {
+  // periodo 9/11 → 9/12 2026: sabati 14, 21, 28/11 e 5/12 = 4
+  const f = fixture({ today: '2026-11-09' });
+  f.s = { ...f.s, balance_date: '2026-11-05', habit_weekly: 50, habit_left: null, habit_left_for: null, margin: 0 };
+  const r = computeSummary(input(f));
+  approx(r.totals.habitLeft, 200, 'quota cene del periodo (4 sabati)');
+  // fino al 31/12: 4 sabati del periodo + 12, 19, 26/12 = 7
+  approx(goalOf(r, '2026-12-31').habit, 350, 'cene fino al 31/12');
+  // un periodo da 5 sabati: 9/1 → 9/2 2027 (sabati 9, 16, 23, 30/1 = 4) e 9/10 → 9/11 2026 (10, 17, 24, 31/10 = 4): usa un periodo con 5
+  const g = fixture({ today: '2026-05-10' }); // 9/5 → 9/6 2026: sabati 9, 16, 23, 30/5 e 6/6 = 5
+  g.s = { ...g.s, balance_date: '2026-05-09', habit_weekly: 50, habit_left: null, habit_left_for: null };
+  g.goalRows = [{ id: 1, amount: 100, date: '2026-12-31' }];
+  g.transactions = [];
+  approx(computeSummary(input(g)).totals.habitLeft, 250, 'periodo con 5 sabati');
+});
