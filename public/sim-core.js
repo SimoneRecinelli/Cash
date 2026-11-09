@@ -44,8 +44,12 @@
       const goals = p.rows.map((r) => r.g);
       alt.maxNow = Math.max(0, Math.min(...goals.map((g) => g.spendable - p.margin)));
       if (level === 'no') {
-        for (const g of goals) {
-          const s = addDaysISO(g.date, 1);
+        // prima data utile: ogni prossimo stipendio oppure il giorno dopo la scadenza di un obiettivo
+        const lastG = goals[goals.length - 1].date;
+        const cands = [];
+        for (let k = 0; k < 24; k++) { const d = addMonthsStr(data.period.end, k); if (d > addDaysISO(lastG, 1)) break; cands.push(d); }
+        goals.forEach((g) => cands.push(addDaysISO(g.date, 1)));
+        for (const s of [...new Set(cands)].filter((x) => x > data.today).sort()) {
           const p2 = plan(data, price, n, s);
           const rest = p2.rows.filter((r) => r.g.date >= s);
           if (!rest.length || rest.every((r) => r.after >= 0)) { alt.when = { s, last: !rest.length }; break; }
@@ -70,7 +74,11 @@
     const committed = []; // {dates, q}
     const costOn = (g) => committed.reduce((s, c) => s + c.q * c.dates.filter((d) => d <= g.date).length, 0);
     const nowCostOf = () => committed.reduce((s, c) => s + c.q * c.dates.filter((d) => d < periodEnd).length, 0);
-    const starts = [data.today, periodEnd, ...goals.map((g) => addDaysISO(g.date, 1))]
+    // Possibili partenze: oggi, ogni prossimo stipendio (fino all'ultimo obiettivo) e il giorno dopo ogni scadenza
+    const lastGoalDate = goals.length ? goals[goals.length - 1].date : periodEnd;
+    const paydays = [];
+    for (let k = 0; k < 24; k++) { const d = addMonthsStr(periodEnd, k); if (d > addDaysISO(lastGoalDate, 1)) break; paydays.push(d); }
+    const starts = [data.today, periodEnd, ...paydays, ...goals.map((g) => addDaysISO(g.date, 1))]
       .filter((s, i, a) => a.indexOf(s) === i).sort();
     const out = new Map();
     for (const it of order) {

@@ -24,15 +24,15 @@ test('un acquisto piccolo regge subito; uno che supera quanto resta nel periodo 
   assert.equal(big.start, '2026-11-09');
 });
 
-test('iPad da 800 € in 3 rate: non regge a dicembre, parte dal 1° gennaio — come dice il simulatore', () => {
+test('iPad da 800 € in 3 rate: non regge subito, parte dal primo stipendio in cui regge (9 dicembre) — come dice il simulatore', () => {
   const d = data();
   const p = byId(schedule(d, [item(1, 800, 1, 3)]), 1);
   assert.equal(p.status, 'later');
-  assert.equal(p.start, '2027-01-01');
-  assert.equal(p.last, '2027-03-01');
+  assert.equal(p.start, '2026-12-09');
+  assert.equal(p.last, '2027-02-09');
   const a = analyse(d, 800, 3, 0);
   assert.equal(a.level, 'no');
-  assert.equal(a.alt.when.s, '2027-01-01'); // stessa risposta della pagina Simula
+  assert.equal(a.alt.when.s, '2026-12-09'); // stessa risposta della pagina Simula
 });
 
 test('la priorità decide chi si prende il margine per primo', () => {
