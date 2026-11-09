@@ -116,3 +116,19 @@ test('API: crea un desiderio valido, rifiuta link o dati non validi', async () =
   assert.equal((await call('POST', { name: 'x', price: 5, installments: 0 })).code, 400);
   assert.equal(inserted.length, 1);
 });
+
+test('acquisto con parti a rate diverse: iPad in 3 rate + accessori pagati subito', () => {
+  const d = data();
+  const mixed = { ...item(1, 100, 1, 3), parts: [{ price: 90, n: 3 }, { price: 30, n: 1 }] };
+  const flat = { ...item(1, 120, 1, 3) }; // stessi 120 € ma tutti in 3 rate
+  const a = byId(schedule(d, [mixed]), 1), b = byId(schedule(d, [flat]), 1);
+  assert.ok(Math.abs(a.q - (30 + 30)) < 0.01, 'prima uscita = rata 30 + 30 subito');
+  assert.equal(a.n, 3);
+  assert.equal(a.last, b.last);
+  // pagare 30 subito pesa di più della stessa cifra spalmata: per un importo al limite può cambiare la data
+  const big = (parts) => schedule(d, [{ ...item(1, 0, 1, 3), price: parts.reduce((s, x) => s + x.price, 0), parts }]);
+  const total = d.goals[0].spendable - 200 + 60; // poco oltre il margine di dicembre
+  const lump = byId(big([{ price: 3, n: 3 }, { price: total - 3, n: 1 }]), 1);
+  const spread = byId(big([{ price: total, n: 3 }]), 1);
+  assert.ok(lump.start >= spread.start, 'tutto subito non parte prima della versione a rate');
+});

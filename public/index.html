@@ -1132,12 +1132,13 @@ function wishPlanText(p) {
   const m = p.margin != null ? ` · margine dopo ≈ ${eur0.format(p.margin)}` : '';
   return `<div class="wp ${when[0]}">${esc(when[1])}${esc(m)}</div>`;
 }
-// Gli accessori accorpati a un acquisto (es. pellicola e cover dell'iPad) si sommano al suo prezzo e seguono le sue rate e la sua priorità
+// Gli accessori accorpati a un acquisto (es. pellicola e cover dell'iPad) si sommano al suo prezzo e seguono la sua priorità; ognuno ha le sue rate
 function wishGroups(open) {
   const ids = new Set(open.map((x) => x.id)), kids = {};
   const child = (x) => x.parent_id && x.parent_id !== x.id && ids.has(x.parent_id);
   open.filter(child).forEach((x) => (kids[x.parent_id] = kids[x.parent_id] || []).push(x));
-  const tops = open.filter((x) => !child(x)).map((x) => ({ ...x, ownPrice: x.price, price: x.price + (kids[x.id] || []).reduce((a, c) => a + c.price, 0) }));
+  const tops = open.filter((x) => !child(x)).map((x) => ({ ...x, ownPrice: x.price, price: x.price + (kids[x.id] || []).reduce((a, c) => a + c.price, 0),
+    parts: [{ price: x.price, n: x.installments }, ...(kids[x.id] || []).map((c) => ({ price: c.price, n: c.installments }))] }));
   return { tops, kids };
 }
 function renderWish() {
@@ -1151,12 +1152,14 @@ function renderWish() {
     $('#wishList').innerHTML = sched.map((x) => {
       const [pl, pc] = PRIO[x.priority];
       const ch = kids[x.id] || [];
-      const sub = [x.installments > 1 ? `${x.installments} rate da ${eur.format(x.price / x.installments)}` : '', ch.length ? `compresi ${ch.length} accessori` : '', host(x.url), x.note].filter(Boolean).join(' · ');
+      const rated = (x.parts || []).filter((q) => q.n > 1), lump = (x.parts || []).filter((q) => q.n <= 1).reduce((a, q) => a + q.price, 0);
+      const rateTxt = rated.length ? (new Set(rated.map((q) => q.n)).size === 1 ? `${rated[0].n} rate da ${eur.format(rated.reduce((a, q) => a + q.price / q.n, 0))}` : 'più rate') + (lump > 0 ? ` + ${eur.format(lump)} subito` : '') : '';
+      const sub = [rateTxt, ch.length ? `${ch.length} ${ch.length === 1 ? 'accessorio compreso' : 'accessori compresi'}` : '', host(x.url), x.note].filter(Boolean).join(' · ');
       return `<div class="wish" data-id="${x.id}">
         <button class="wbody"><span style="min-width:0"><div class="wt">${esc(x.name)}<span class="pill ${pc}">${pl}</span></div>
           ${sub ? `<div class="ws">${esc(sub)}</div>` : ''}${wishSeenText({ ...x, price: x.ownPrice })}${wishPlanText(x.plan)}</span><b class="num">${eur0.format(x.price)}</b></button>
         ${x.url ? `<a class="wopen" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>` +
-        ch.map((c) => `<div class="wish wchild" data-id="${c.id}"><button class="wbody"><span style="min-width:0"><div class="wt">+ ${esc(c.name)}</div>${wishSeenText(c)}</span><b class="num">${eur.format(c.price)}</b></button>
+        ch.map((c) => `<div class="wish wchild" data-id="${c.id}"><button class="wbody"><span style="min-width:0"><div class="wt">+ ${esc(c.name)}</div>${c.installments > 1 ? `<div class="ws">${c.installments} rate da ${eur.format(c.price / c.installments)}</div>` : }${wishSeenText(c)}</span><b class="num">${eur.format(c.price)}</b></button>
           ${c.url ? `<a class="wopen" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" aria-label="Apri il link">↗</a>` : '<span class="wopen" style="background:none" aria-hidden="true"></span>'}</div>`).join('');
     }).join('');
     const tot = open.reduce((s, x) => s + x.price, 0);

@@ -82,26 +82,32 @@
       .filter((s, i, a) => a.indexOf(s) === i).sort();
     const out = new Map();
     for (const it of order) {
-      const n = Math.max(1, it.installments || 1), q = it.price / n;
+      // Un acquisto può avere più parti con rate diverse (es. iPad in 3 rate + cover pagata subito)
+      const parts = (it.parts && it.parts.length ? it.parts : [{ price: it.price, n: it.installments }])
+        .map((x) => ({ n: Math.max(1, x.n || 1), q: x.price / Math.max(1, x.n || 1) }));
+      const datesOf = (s) => parts.map((x) => Array.from({ length: x.n }, (_, k) => addMonthsStr(s, k)));
+      const costFor = (ds, test) => parts.reduce((t, x, i) => t + x.q * ds[i].filter(test).length, 0);
       let chosen = null;
       for (const s of starts) {
-        const dates = Array.from({ length: n }, (_, k) => addMonthsStr(s, k));
+        const ds = datesOf(s);
         const worst = goals.length
-          ? Math.min(...goals.map((g) => g.spendable - margin - costOn(g) - q * dates.filter((d) => d <= g.date).length))
+          ? Math.min(...goals.map((g) => g.spendable - margin - costOn(g) - costFor(ds, (d) => d <= g.date)))
           : Infinity;
-        const nowCost = nowCostOf() + q * dates.filter((d) => d < periodEnd).length;
-        if (worst >= 0 && nowCost <= rem) { chosen = { s, dates, worst }; break; }
+        const nowCost = nowCostOf() + costFor(ds, (d) => d < periodEnd);
+        if (worst >= 0 && nowCost <= rem) { chosen = { s, ds, worst }; break; }
       }
       if (!chosen) { // nemmeno così: dopo l'ultimo obiettivo e con il periodo libero
         const s = goals.length ? addDaysISO(goals[goals.length - 1].date, 1) : periodEnd;
-        chosen = { s, dates: Array.from({ length: n }, (_, k) => addMonthsStr(s, k)), worst: Infinity };
+        chosen = { s, ds: datesOf(s), worst: Infinity };
       }
       const lastGoal = goals.length ? goals[goals.length - 1].date : null;
       const status = chosen.s === data.today ? 'now'
         : chosen.s === periodEnd ? 'nextperiod'
         : !lastGoal || chosen.s > lastGoal ? 'free' : 'later';
-      committed.push({ dates: chosen.dates, q });
-      out.set(it.id, { id: it.id, status, start: chosen.s, last: chosen.dates[n - 1], q, n, margin: Number.isFinite(chosen.worst) ? chosen.worst : null });
+      parts.forEach((x, i) => committed.push({ dates: chosen.ds[i], q: x.q }));
+      const last = chosen.ds.map((d) => d[d.length - 1]).sort().pop();
+      const maxN = Math.max(...parts.map((x) => x.n));
+      out.set(it.id, { id: it.id, status, start: chosen.s, last, q: parts.reduce((t, x) => t + x.q, 0), n: maxN, margin: Number.isFinite(chosen.worst) ? chosen.worst : null });
     }
     return order.map((it) => ({ ...it, plan: out.get(it.id) }));
   }
