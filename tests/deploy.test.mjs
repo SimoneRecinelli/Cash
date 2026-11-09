@@ -53,3 +53,17 @@ test('hub: rotta sconosciuta → 404; rotta nota → arriva al suo handler, con 
   await hub({ method: 'GET', query: { r: 'wishlist' }, headers: { 'x-real-ip': '6.6.6.7' } }, res); // senza credenziali
   assert.equal(res.code, 401);
 });
+
+test('le pagine HTML e sim-core.js non hanno errori di sintassi (una pagina vuota = app inutilizzabile)', async () => {
+  const vm = await import('node:vm');
+  const pub = new URL('../public/', import.meta.url);
+  for (const f of fs.readdirSync(pub).filter((n) => n.endsWith('.html'))) {
+    const html = fs.readFileSync(new URL(f, pub), 'utf8');
+    [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].forEach((m, i) => {
+      assert.doesNotThrow(() => new vm.Script(m[1], { filename: `${f}#script${i}` }), `${f}: errore di sintassi nello script ${i}`);
+    });
+  }
+  for (const f of fs.readdirSync(pub).filter((n) => n.endsWith('.js'))) {
+    assert.doesNotThrow(() => new vm.Script(fs.readFileSync(new URL(f, pub), 'utf8'), { filename: f }), `${f}: errore di sintassi`);
+  }
+});
