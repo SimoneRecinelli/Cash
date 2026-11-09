@@ -237,6 +237,13 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
 .gs-right { margin-left: auto; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .gs-right .pill { margin-left: 0; }
 .gs-margin { font-size: 12px; color: var(--muted); }
+details.how { margin: -6px 0 16px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 0 16px; }
+details.how > summary { list-style: none; cursor: pointer; padding: 12px 0; font-size: 14px; color: var(--accent); font-weight: 600; }
+details.how > summary::-webkit-details-marker { display: none; }
+details.how .hb { padding: 0 0 14px; font-size: 14px; line-height: 1.5; }
+details.how .hb p { margin: 0 0 10px; color: var(--muted); }
+details.how .hb .r { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
 .gbody { padding: 0 16px 14px; }
 .gbody .bar { margin: 0 0 10px; height: 8px; }
 .gbody .g2 { font-size: 13px; color: var(--muted); margin-top: 6px; }
@@ -280,6 +287,7 @@ details.goal[open] > summary::after { transform: rotate(-90deg); }
     </section>
 
     <button class="homecard" id="homeGoal" data-go="goals" hidden></button>
+    <details class="how" id="homeHow" hidden></details>
 
     <h2>Prossimi addebiti e accrediti</h2>
     <div class="card" id="homeUpcoming"></div>
@@ -694,7 +702,7 @@ function render(d) {
       const pill = g.expired ? '<span class="pill">Scaduto</span>' : !g.feasible ? '<span class="pill late">Non ci arrivi</span>' : g.binding && d.goals.length > 1 ? '<span class="pill guide">Guida il budget</span>' : '<span class="pill ok">Regge</span>';
       return `<details class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}"${openGoals.has(String(g.id)) ? ' open' : ''}>
         <summary><span class="gs-main"><b>${eur0.format(g.amount)}</b><span class="gs-sub">entro ${full(g.date)}</span></span>
-          <span class="gs-right">${pill}${mg === null ? '' : `<span class="gs-margin">margine ${mg < 0 ? '−' : ''}${eur0.format(Math.abs(mg))}</span>`}</span></summary>
+          <span class="gs-right">${pill}${mg === null ? '' : `<span class="gs-margin">spazio libero ${mg < 0 ? '−' : ''}${eur0.format(Math.abs(mg))}</span>`}</span></summary>
         <div class="gbody">
           <div class="bar"><i style="width:${gp}%"></i></div>
           <div class="g2">Saldo stimato ${m(d.balance)}. ${txt}</div>
@@ -715,7 +723,24 @@ function render(d) {
     $('#homeGoal').innerHTML = `<div class="k">${d.goals.length > 1 ? 'Obiettivo che guida il budget' : 'Il tuo obiettivo'}</div>
       <div class="t"><b>${eur0.format(hg.amount)}</b><span class="muted">entro ${full(hg.date)}</span></div>
       <div class="bar"><i style="width:${hp}%"></i></div>
-      <div class="s">Saldo stimato ${m(d.balance)} · ${hg.feasible ? `margine ${m(Math.max(0, hm))}${hm < 0 ? ' (sotto la riserva)' : ''}` : `<b style="color:var(--bad)">non ci arrivi</b>`}${d.goals.length > 1 ? ` · ${d.goals.length} obiettivi` : ''}</div>`;
+      <div class="s">Saldo stimato ${m(d.balance)} · ${hg.feasible ? `spazio libero ${m(Math.max(0, hm))}${hm < 0 ? ' (sotto la riserva)' : ''}` : `<b style="color:var(--bad)">non ci arrivi</b>`}${d.goals.length > 1 ? ` · ${d.goals.length} obiettivi` : ''}</div>`;
+  }
+
+  const how = $('#homeHow');
+  how.hidden = !hg || !hg.feasible;
+  if (hg && hg.feasible) {
+    const free = hg.spendable - (hg.margin || 0), L = hg.perDay > 0 ? Math.round(hg.budget / hg.perDay) : 0;
+    const row = (k, v, cls = '') => `<div class="r ${cls}"><span>${k}</span><span class="num">${v}</span></div>`;
+    how.innerHTML = `<summary>Cosa significa “spazio libero ${eur0.format(Math.max(0, free))}”?</summary><div class="hb">
+      <p>È quanto puoi ancora spendere da qui al ${full(hg.date)} per spese <b>non previste</b> (spesa, benzina, regali, sfizi…) e arrivare comunque a ${eur0.format(hg.amount)}. Le spese ricorrenti e le cene abituali sono già tolte: non vanno sottratte di nuovo.</p>
+      ${row('Saldo di partenza (all’inizio di questo periodo)', eur0.format(hg.spendable + hg.amount - hg.income + hg.recurring + hg.habit))}
+      ${row('+ Entrate fino alla data (stipendi' + (hg.bonus > 0 ? ' e mensilità extra' : '') + ')', '+' + eur0.format(hg.income))}
+      ${row('− Spese ricorrenti fino alla data', '−' + eur0.format(hg.recurring))}
+      ${hg.habit > 0 ? row('− Cene e spese abituali previste', '−' + eur0.format(hg.habit)) : ''}
+      ${row('− Il tuo obiettivo', '−' + eur0.format(hg.amount))}
+      ${hg.margin > 0 ? row('− Margine di sicurezza', '−' + eur0.format(hg.margin)) : ''}
+      ${row('= Spazio libero', eur0.format(Math.max(0, free)), 'tot')}
+      <p style="margin-top:12px">${L > 0 ? `Spalmato sui ${hg.days} giorni fino alla data fa ≈ ${eur.format(hg.perDay)} al giorno: per i ${L} giorni di questo periodo sono ≈ ${eur0.format(hg.budget)}, che con le cene fanno la cifra “Ti restano da spendere” qui sopra. ` : ''}Se spendi di meno, il resto resta tuo e il periodo dopo hai di più; se spendi di più, il periodo dopo hai di meno.</p></div>`;
   }
 
   // home: prossimi addebiti e accrediti
