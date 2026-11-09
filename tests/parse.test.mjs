@@ -81,3 +81,14 @@ test('negozio con punti nel nome (F.LLI DI FRANCESCO L. &) non viene tagliato', 
   assert.equal(parseBankMessage('Pagamento carta di 9,00 € presso CLAUDE.AI SUBSCRIPTION il 06/11.').merchant, 'CLAUDE.AI SUBSCRIPTION');
   assert.equal(parseBankMessage('Pagamento di 5,00 € presso BAR SPORT. Saldo disponibile 100,00 €').merchant, 'BAR SPORT');
 });
+
+test('carta virtuale: "…alle ore 14:09 da PAYPAL *PLAYSTATION" → negozio PLAYSTATION, categoria Svago', () => {
+  const r = parseBankMessage('Gentile cliente,\nhai pagato 79,99 EUR con la carta virtuale *7094 rif. carta *5019 il 11.09 alle ore 14:09 da PAYPAL *PLAYSTATION, .\n\nCordiali saluti\nIntesa Sanpaolo\n\nQuesto messaggio è stato inviato da un indirizzo email di sola notifica ti preghiamo di non rispondere.');
+  assert.equal(r.amount, 79.99);
+  assert.equal(r.merchant, 'PLAYSTATION');
+  assert.equal(r.category, 'Svago');
+  const t = parseBankMessage('Gentile cliente, hai pagato 73,80 EUR con la carta virtuale *7094 rif. carta *5019 il 11.09 alle ore 09:36 da TRENITALIA SPA, .');
+  assert.equal(t.merchant, 'TRENITALIA SPA');
+  assert.equal(t.category, 'Trasporti');
+  assert.equal(parseBankMessage('hai pagato 9,99 EUR presso PAYPAL *NETFLIX il 11/09').merchant, 'NETFLIX');
+});

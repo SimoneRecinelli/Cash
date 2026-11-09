@@ -15,6 +15,12 @@ const AMOUNT_RES = [
 const MERCHANT_RE =
   /(?:presso|c\/o|a favore di|beneficiario|esercente)\s*:?\s+(.+?)(?=\s+(?:il|in data|alle|ore|con|carta|del|tramite)\b|\s+\d{1,2}[\/.]\d{1,2}|;|\.\s*$|\.\s+(?:saldo|disponibil|se|per|grazie|info|cordiali|questo|il presente)\b|$)/i;
 
+// Pagamenti con carta virtuale: "…il 11.09 alle ore 14:09 da PAYPAL *PLAYSTATION, ."
+const MERCHANT_DA_RE = /alle ore \d{1,2}[:.]\d{2}\s+da\s+(.+?)(?=\s*,|\s*\.\s*$|\s*\.\s|$)/i;
+// Dietro PayPal e simili c'è il vero negozio: "PAYPAL *PLAYSTATION" → "PLAYSTATION"
+const cleanMerchant = (m) => String(m || '').replace(/^(?:paypal|pp|sumup|sq|zettle|satispay)\s*\*\s*/i, '').replace(/\s+/g, ' ').trim();
+const findMerchant = (text) => cleanMerchant(text.match(MERCHANT_RE)?.[1] || text.match(MERCHANT_DA_RE)?.[1] || '').slice(0, 60);
+
 // Carburante: nome del distributore o parole tipiche, nel negozio o nel testo della mail
 const FUEL_RE = /benzin|carburant|gasolio|diesel|\bgpl\b|rifornimento|stazione di servizio|self.?service|\beni\b|enilive|agip|\bq8\b|\besso\b|tamoil|\bip\b|\bshell\b|total ?energies|repsol|\bies\b|\bapi\b|\berg\b|kerotris|italiana petroli/i;
 
@@ -25,6 +31,7 @@ const CATEGORY_RULES = [
   ['Trasporti', /autostrad|telepass|trenitalia|italo|uber|\batm\b|taxi|parcheggi/i],
   ['Abbonamenti', /netflix|spotify|prime video|disney|apple\.com|itunes|google|dazn|youtube|icloud/i],
   ['Salute', /farmaci|parafarm|medic|clinic|dent|ottic/i],
+  ['Svago', /playstation|\bpsn\b|\bsteam|nintendo|xbox|epic games|cinema|teatro|ticketone|concert|bowling|twitch|\bgaming\b/i],
   ['Shopping', /amazon|zalando|zara|h&m|ikea|decathlon|mediaworld|unieuro|paypal/i],
   ['Casa', /enel|hera|iren|\bgas\b|luce|affitto|condomin|bolletta/i],
 ];
@@ -70,7 +77,7 @@ export function parseBankMessage(raw) {
   const amount = parseAmount(text);
   if (!amount) return { error: 'Importo non trovato' };
 
-  const merchant = (text.match(MERCHANT_RE)?.[1] || '').trim().slice(0, 60);
+  const merchant = findMerchant(text);
   const type = income ? 'income' : 'expense';
   return {
     type,
@@ -84,7 +91,7 @@ export function parseBankMessage(raw) {
 export function guessFromText(raw) {
   const text = String(raw || '').split(/cordiali saluti|questo messaggio è stato inviato|il presente messaggio/i)[0].replace(/\s+/g, ' ').trim();
   const type = INCOME_RE.test(text) && !SALARY_RE.test(text) ? 'income' : 'expense';
-  const merchant = (text.match(MERCHANT_RE)?.[1] || '').trim().slice(0, 60);
+  const merchant = findMerchant(text);
   return {
     type,
     amount: parseAmount(text),
