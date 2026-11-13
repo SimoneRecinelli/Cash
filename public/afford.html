@@ -7,8 +7,13 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#f5f2ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0f1312">
+<script>
+// Tema scelto nelle Impostazioni (scuro di base). Va applicato prima che la pagina si disegni.
+(function () { var t = 'dark'; try { t = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t);
+  var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', t === 'dark' ? '#0f1312' : '#f5f2ec'); })();
+</script>
 <style>
 :root {
   --bg: #f5f5f0; --card: #ffffff; --ink: #14201d; --muted: #6b7773; --line: #e6e8e4;

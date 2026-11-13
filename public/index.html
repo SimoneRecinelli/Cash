@@ -10,8 +10,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Spese">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f5f2ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0f1312">
+<script>
+// Tema scelto nelle Impostazioni (scuro di base). Va applicato prima che la pagina si disegni.
+(function () { var t = 'dark'; try { t = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t);
+  var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', t === 'dark' ? '#0f1312' : '#f5f2ec'); })();
+</script>
 <style>
 :root {
   --bg: #f5f5f0; --card: #ffffff; --ink: #14201d; --muted: #6b7773; --line: #e6e8e4;
@@ -447,6 +452,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
 <!-- Impostazioni -->
 <section class="sheet" id="setSheet" hidden>
   <h3>Impostazioni</h3>
+  <label class="switchrow" for="sDark"><span>Tema scuro<small>Si applica subito, solo su questo dispositivo</small></span><span class="switch"><input type="checkbox" id="sDark"><i></i></span></label>
   <label for="sSalary">Stipendio mensile netto (€)</label>
   <input id="sSalary" inputmode="decimal" placeholder="es. 1800">
   <label for="sDay">Giorno in cui arriva lo stipendio</label>
@@ -1123,6 +1129,14 @@ function openBalance() {
 }
 $('#btnCheck').onclick = openBalance;
 $('#homeBal').onclick = openBalance;
+// Tema scuro/chiaro: preferenza di questo dispositivo, applicata subito
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('theme', t); } catch (e) {}
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', t === 'dark' ? '#0f1312' : '#f5f2ec');
+}
+$('#sDark').checked = document.documentElement.getAttribute('data-theme') !== 'light';
+$('#sDark').onchange = () => setTheme($('#sDark').checked ? 'dark' : 'light');
 $('#homeDinner').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-a]'); if (!b) return;
   const q = b.closest('.q'); b.disabled = true;
