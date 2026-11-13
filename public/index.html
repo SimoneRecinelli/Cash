@@ -339,7 +339,6 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <section class="tab" id="tab-wish">
     <div class="sec"><h2>Lista dei desideri</h2><button class="add-mini" id="btnAddWish" aria-label="Aggiungi desiderio">+</button></div>
     <div class="hint" id="wishSummary" style="margin:-4px 4px 8px"></div>
-    <button class="btn2" id="wishCheck" style="margin:0 0 12px;width:100%">↻ Controlla i prezzi online adesso</button>
     <div class="card" id="wishList"></div>
     <details id="wishBoughtBox" hidden><summary id="wishBoughtSum">Già comprati</summary><div class="card" id="wishBought"></div></details>
   </section>
@@ -415,7 +414,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <select id="wParent"><option value="">— nessuno, acquisto a sé —</option></select></div>
   <label for="wNote">Nota (facoltativa)</label>
   <input id="wNote" maxlength="200" placeholder="es. ricondizionato, grado A" autocomplete="off">
-  <div class="hint">Il prezzo lo scrivi tu. Se metti il link provo anche a leggere il prezzo dal negozio. La priorità decide cosa compri per primo.</div>
+  <div class="hint">Il prezzo lo scrivi tu; il link ti serve per riaprire la pagina e controllarlo. La priorità decide cosa compri per primo.</div>
   <div class="err" id="wishErr"></div>
   <button class="primary" id="wishSave">Salva</button>
   <button class="link" data-close>Annulla</button>
@@ -1292,6 +1291,8 @@ const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } 
 const PRIO = { 1: ['Alta', 'p1'], 2: ['Media', ''], 3: ['Bassa', 'p3'] };
 const fullD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
 function wishSeenText(x) {
+  // Controllo prezzi online tolto: i negozi bloccano la lettura automatica
+  return '';
   if (!x.url) return '';
   if (x.seen_price == null) {
     const why = { blocked: 'il negozio blocca la lettura', noprice: 'prezzo non trovato nella pagina', gone: 'pagina non trovata', error: 'pagina non raggiungibile', invalid: 'link non controllabile' }[x.seen_status];
@@ -1366,14 +1367,6 @@ function openWishForm(x) {
   if (!x) setTimeout(() => $('#wName').focus(), 250);
 }
 $('#btnAddWish').onclick = () => openWishForm(null);
-$('#wishCheck').onclick = async () => {
-  const b = $('#wishCheck'); b.disabled = true; b.textContent = 'Controllo in corso…';
-  try {
-    const r = await api('pricecheck', { method: 'POST', body: '{}' });
-    toast(r.checked ? `Letti ${r.read} prezzi su ${r.checked}` : 'Niente da controllare'); await load();
-  } catch (e) { alert(e.message); }
-  finally { b.disabled = false; b.textContent = '↻ Controlla i prezzi online adesso'; }
-};
 $('#wishSave').onclick = async () => {
   const price = parseNum($('#wPrice').value), n = $('#wN').value.trim() ? parseInt($('#wN').value, 10) : 1;
   if (!$('#wName').value.trim()) { $('#wishErr').textContent = 'Scrivi cosa vuoi comprare'; return; }

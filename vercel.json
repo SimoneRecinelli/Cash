@@ -3,7 +3,6 @@
   "framework": null,
   "regions": ["fra1"],
   "outputDirectory": "public",
-  "crons": [{ "path": "/api/hub?r=pricecheck", "schedule": "0 6 * * *" }],
   "headers": [
     {
       "source": "/(.*)",
