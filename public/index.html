@@ -602,7 +602,7 @@ async function api(path, opts = {}) {
     ...opts,
     headers: { 'content-type': 'application/json', 'x-session': KEY },
   });
-  if (r.status === 401) { KEY = ''; try { localStorage.removeItem('appkey'); } catch (e) {} openSheet('keySheet'); throw new Error('Non autorizzato'); }
+  if (r.status === 401) { KEY = ''; try { localStorage.removeItem('appkey'); localStorage.removeItem('cashCache'); } catch (e) {} openSheet('keySheet'); throw new Error('Non autorizzato'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Errore di rete');
   return j;
@@ -851,14 +851,27 @@ function render(d) {
   }
 }
 
+// Mostra subito gli ultimi dati salvati sul telefono, poi li aggiorna appena arriva la risposta.
+let firstLoad = true;
+function showCached() {
+  try {
+    const c = JSON.parse(localStorage.getItem('cashCache') || 'null');
+    if (!c || !c.d) return;
+    render(c.d);
+    wishItems = (c.w && c.w.items) || [];
+    renderWish();
+  } catch (e) {}
+}
 async function load() {
   try {
     const [d, w] = await Promise.all([api('summary'), api('wishlist').catch(() => ({ items: [] }))]);
     render(d);
     wishItems = w.items;
     renderWish();
+    try { localStorage.setItem('cashCache', JSON.stringify({ d, w })); } catch (e) {}
   }
-  catch (e) { if (e.message !== 'Non autorizzato') $('#list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  catch (e) { if (e.message !== 'Non autorizzato' && firstLoad && data) { /* resto sui dati salvati */ } else if (e.message !== 'Non autorizzato') $('#list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  firstLoad = false;
 }
 
 let editTx = null, inboxSel = null;
@@ -1002,7 +1015,7 @@ $('#setSave').onclick = async () => {
     closeSheets(); toast('Salvato'); load();
   } catch (e) { $('#setErr').textContent = e.message; }
 };
-$('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); } catch (e) {} KEY = ''; $('#kInput').value = ''; $('#kCode').value = ''; openSheet('keySheet'); };
+$('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); localStorage.removeItem('cashCache'); } catch (e) {} KEY = ''; $('#kInput').value = ''; $('#kCode').value = ''; openSheet('keySheet'); };
 
 // ---- Percorso del saldo, controllo saldo, mesi chiusi ----
 const niceStep = (r) => { const e = 10 ** Math.floor(Math.log10(r)); const f = r / e; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e; };
@@ -1482,7 +1495,7 @@ $('#kInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#kSa
 // ---- Avvio ----
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 document.addEventListener('visibilitychange', () => { if (!document.hidden && KEY) load(); });
-if (KEY) load(); else openSheet('keySheet');
+if (KEY) { showCached(); load(); } else openSheet('keySheet');
 </script>
 </body>
 </html>

@@ -24,14 +24,17 @@ function init() {
   if (!ready) {
     const sql = db();
     ready = (async () => {
-      await sql`CREATE TABLE IF NOT EXISTS settings (
+      // Tutte le migrazioni in un solo viaggio verso il database (una transazione),
+      // invece di ~35 richieste in fila a ogni avvio a freddo.
+      const q = [];
+      q.push(sql`CREATE TABLE IF NOT EXISTS settings (
         id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
         salary numeric(12,2) NOT NULL DEFAULT 0,
         salary_day int NOT NULL DEFAULT 27 CHECK (salary_day BETWEEN 1 AND 31),
         savings_goal numeric(12,2) NOT NULL DEFAULT 0
-      )`;
-      await sql`INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING`;
-      await sql`CREATE TABLE IF NOT EXISTS transactions (
+      )`);
+      q.push(sql`INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS transactions (
         id serial PRIMARY KEY,
         type text NOT NULL CHECK (type IN ('expense','income')),
         amount numeric(12,2) NOT NULL CHECK (amount > 0),
@@ -39,78 +42,78 @@ function init() {
         note text NOT NULL DEFAULT '',
         date date NOT NULL DEFAULT CURRENT_DATE,
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions (date)`;
-      await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS raw_hash text`;
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS transactions_raw_hash_idx ON transactions (raw_hash)`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_ref numeric(14,2)`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_set_at timestamptz`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_monthly numeric(12,2) NOT NULL DEFAULT 0`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS safety_margin numeric(12,2) NOT NULL DEFAULT 0`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_weekly numeric(12,2) NOT NULL DEFAULT 0`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_left numeric(12,2)`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_left_for date`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_amount numeric(14,2)`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_date date`;
-      await sql`CREATE TABLE IF NOT EXISTS goals (
+      )`);
+      q.push(sql`CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions (date)`);
+      q.push(sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS raw_hash text`);
+      q.push(sql`CREATE UNIQUE INDEX IF NOT EXISTS transactions_raw_hash_idx ON transactions (raw_hash)`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_ref numeric(14,2)`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS balance_set_at timestamptz`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_monthly numeric(12,2) NOT NULL DEFAULT 0`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS safety_margin numeric(12,2) NOT NULL DEFAULT 0`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_weekly numeric(12,2) NOT NULL DEFAULT 0`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_left numeric(12,2)`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS habit_left_for date`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_amount numeric(14,2)`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS goal_date date`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS goals (
         id serial PRIMARY KEY,
         amount numeric(14,2) NOT NULL CHECK (amount > 0),
         date date NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
+      )`);
       // Migrazione: l'obiettivo singolo delle impostazioni diventa la prima riga di goals
-      await sql`INSERT INTO goals (amount, date)
+      q.push(sql`INSERT INTO goals (amount, date)
         SELECT goal_amount, goal_date FROM settings
         WHERE id = 1 AND goal_amount IS NOT NULL AND goal_date IS NOT NULL
-          AND NOT EXISTS (SELECT 1 FROM goals)`;
-      await sql`UPDATE settings SET goal_amount = NULL, goal_date = NULL WHERE id = 1`;
-      await sql`CREATE TABLE IF NOT EXISTS bonuses (
+          AND NOT EXISTS (SELECT 1 FROM goals)`);
+      q.push(sql`UPDATE settings SET goal_amount = NULL, goal_date = NULL WHERE id = 1`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS bonuses (
         id serial PRIMARY KEY,
         name text NOT NULL,
         month int NOT NULL CHECK (month BETWEEN 1 AND 12),
         day int NOT NULL CHECK (day BETWEEN 1 AND 31),
         amount numeric(12,2) NOT NULL CHECK (amount > 0),
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`CREATE TABLE IF NOT EXISTS salary_overrides (
+      )`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS salary_overrides (
         date date PRIMARY KEY,
         amount numeric(12,2) NOT NULL CHECK (amount >= 0),
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`CREATE TABLE IF NOT EXISTS recurring (
+      )`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS recurring (
         id serial PRIMARY KEY,
         name text NOT NULL,
         amount numeric(12,2) NOT NULL CHECK (amount > 0),
         day int NOT NULL CHECK (day BETWEEN 1 AND 31),
         match text NOT NULL DEFAULT '',
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS starts date`;
-      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS until date`;
-      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS flex boolean NOT NULL DEFAULT false`;
-      await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS dinner boolean`;
-      await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS refund boolean NOT NULL DEFAULT false`;
-      await sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS installment boolean NOT NULL DEFAULT false`;
-      await sql`CREATE TABLE IF NOT EXISTS inbox (
+      )`);
+      q.push(sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS starts date`);
+      q.push(sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS until date`);
+      q.push(sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS flex boolean NOT NULL DEFAULT false`);
+      q.push(sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS dinner boolean`);
+      q.push(sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS refund boolean NOT NULL DEFAULT false`);
+      q.push(sql`ALTER TABLE recurring ADD COLUMN IF NOT EXISTS installment boolean NOT NULL DEFAULT false`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS inbox (
         id serial PRIMARY KEY,
         text text NOT NULL,
         reason text NOT NULL DEFAULT '',
         status text NOT NULL DEFAULT 'new' CHECK (status IN ('new','done','dismissed')),
         raw_hash text UNIQUE,
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`CREATE TABLE IF NOT EXISTS balance_checks (
+      )`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS balance_checks (
         id serial PRIMARY KEY,
         expected numeric(14,2) NOT NULL,
         actual numeric(14,2) NOT NULL,
         diff numeric(14,2) NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`CREATE TABLE IF NOT EXISTS balance_history (
+      )`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS balance_history (
         date date PRIMARY KEY,
         balance numeric(14,2) NOT NULL
-      )`;
-      await sql`CREATE TABLE IF NOT EXISTS wishlist (
+      )`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS wishlist (
         id serial PRIMARY KEY,
         name text NOT NULL,
         price numeric(12,2) NOT NULL CHECK (price > 0),
@@ -120,24 +123,25 @@ function init() {
         note text NOT NULL DEFAULT '',
         bought_at date,
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parent_id int`;
-      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_price numeric(12,2)`;
-      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS low_price numeric(12,2)`;
-      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_at timestamptz`;
-      await sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_status text NOT NULL DEFAULT ''`;
-      await sql`CREATE TABLE IF NOT EXISTS category_rules (
+      )`);
+      q.push(sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parent_id int`);
+      q.push(sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_price numeric(12,2)`);
+      q.push(sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS low_price numeric(12,2)`);
+      q.push(sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_at timestamptz`);
+      q.push(sql`ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS seen_status text NOT NULL DEFAULT ''`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS category_rules (
         id serial PRIMARY KEY,
         pattern text NOT NULL UNIQUE,
         category text NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now()
-      )`;
-      await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS totp_last bigint`;
-      await sql`CREATE TABLE IF NOT EXISTS auth_fails (
+      )`);
+      q.push(sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS totp_last bigint`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS auth_fails (
         ip text PRIMARY KEY,
         fails int NOT NULL DEFAULT 0,
         window_start timestamptz NOT NULL DEFAULT now()
-      )`;
+      )`);
+      await sql.transaction(q);
     })().catch((e) => {
       ready = null;
       throw e;
