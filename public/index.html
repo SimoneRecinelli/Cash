@@ -286,7 +286,6 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   </header>
 
   <section class="tab on" id="tab-home">
-    <div class="say" id="homeSay" hidden></div>
     <div class="card dinask" id="homeDinner" hidden></div>
     <button class="card inbcard" id="homeBal" hidden><span><b>Controlla il saldo</b><div class="hint" id="homeBalSub" style="margin:2px 0 0"></div></span><span aria-hidden="true">›</span></button>
     <button class="card inbcard" id="homeInbox" data-go="mov" hidden><span><b id="homeInboxN"></b><div class="hint" style="margin:2px 0 0">E-mail della banca che non ho capito: dimmi tu cosa sono</div></span><span aria-hidden="true">›</span></button>
@@ -903,8 +902,6 @@ function render(d) {
         <div class="t2">${ok ? 'accreditata il ' : 'prevista il '}${esc(new Date(b.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
         <span class="amt num">≈ ${eur0.format(b.amount)}</span></button>`;
     }).join('');
-
-  renderSay(d);
 
   // prima configurazione
   if (s.salary === 0 && !localStorage.getItem('setupShown')) {

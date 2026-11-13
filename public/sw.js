@@ -1,4 +1,4 @@
-const CACHE = 'spese-v28';
+const CACHE = 'spese-v29';
 const ASSETS = ['/', '/sim-core.js', '/theme.css', '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
