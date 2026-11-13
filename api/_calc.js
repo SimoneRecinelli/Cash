@@ -64,6 +64,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
 
   // ---- Spese ricorrenti: "verificata" se un SMS/movimento la conferma, altrimenti riservata ----
   const used = new Set();
+  const recOf = new Map(); // movimento → nome della ricorrente che conferma
   const matched = [];
   const rec = [];
   for (const r of recurring) {
@@ -95,6 +96,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     }
     if (best) {
       used.add(best.x.id);
+      recOf.set(best.x.id, r.name);
       matched.push({ amount: best.x.amount, date: best.x.date, inWin: !entry || best.x.fresh });
     }
     rec.push({
@@ -222,6 +224,18 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     };
   });
 
+  // Cosa ha fatto ogni movimento al budget, per spiegarlo in parole nell'app
+  const isDinner = (x) => (weekly > 0 ? countsAsDinner(x) : x.type === 'expense' && x.category === 'Ristoranti');
+  const effectOf = (x) => {
+    if (x.refund) return 'refund';
+    if (entry && !x.fresh) return 'old';
+    if (recOf.has(x.id)) return 'rec';
+    if (x.type === 'income') return 'income';
+    if (isDinner(x)) return 'dinner';
+    if (weekly > 0 && dinnerState(x) === 'ask') return 'ask';
+    return 'free';
+  };
+
   const catMap = new Map();
   for (const x of transactions) {
     if (x.type === 'expense') catMap.set(x.category, (catMap.get(x.category) || 0) + x.amount);
@@ -259,7 +273,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     recurring: rec,
     bonuses: bon,
     categories,
-    transactions: allTx.map((x) => ({ ...x, dn: weekly > 0 ? dinnerState(x) : 'no' })),
+    transactions: allTx.map((x) => ({ ...x, dn: weekly > 0 ? dinnerState(x) : 'no', eff: effectOf(x), rec: recOf.get(x.id) || null })),
     dinnerAsk,
  };
 }

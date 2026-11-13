@@ -324,3 +324,17 @@ test('cene: una spesa di sabato conta come cena; benzina di sabato e ristoranti 
   const no = dinnerFix([{ id: 203, amount: 25, category: 'Ristoranti', date: '2026-11-12', dinner: false }]);
   approx(no.totals.spentBar, 25, 'ristorante non cena = spesa libera');
 });
+
+test('ogni movimento dice cosa ha fatto al budget (per spiegarlo nell’app)', () => {
+  const r = dinnerFix([
+    { id: 301, amount: 50, category: 'Shopping', note: 'ZALANDO', date: '2026-11-13', dinner: true },
+    { id: 302, amount: 30, category: 'Benzina', date: '2026-11-14' },
+    { id: 303, amount: 12, category: 'Spesa', date: '2026-11-12' },
+    { id: 304, amount: 22.99, category: 'Casa', note: 'Internet', date: '2026-11-16' },
+    { id: 305, amount: 98, category: 'Altro', date: '2026-11-12', refund: true },
+    { id: 306, type: 'income', amount: 40, category: 'Extra', date: '2026-11-12' },
+  ]);
+  const eff = Object.fromEntries(r.transactions.map((x) => [x.id, x.eff]));
+  assert.deepEqual(eff, { 301: 'dinner', 302: 'ask', 303: 'free', 304: 'rec', 305: 'refund', 306: 'income' });
+  assert.equal(r.transactions.find((x) => x.id === 304).rec, 'Internet');
+});

@@ -286,9 +286,10 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   </header>
 
   <section class="tab on" id="tab-home">
+    <div class="say" id="homeSay" hidden></div>
     <div class="card dinask" id="homeDinner" hidden></div>
     <button class="card inbcard" id="homeBal" hidden><span><b>Controlla il saldo</b><div class="hint" id="homeBalSub" style="margin:2px 0 0"></div></span><span aria-hidden="true">›</span></button>
-    <button class="card inbcard" id="homeInbox" data-go="mov" hidden><span><b id="homeInboxN"></b><div class="hint" style="margin:2px 0 0">Messaggi della banca che non ho saputo registrare da solo</div></span><span aria-hidden="true">›</span></button>
+    <button class="card inbcard" id="homeInbox" data-go="mov" hidden><span><b id="homeInboxN"></b><div class="hint" style="margin:2px 0 0">E-mail della banca che non ho capito: dimmi tu cosa sono</div></span><span aria-hidden="true">›</span></button>
     <section class="hero" id="hero" hidden>
       <div class="label" id="heroLabel">Ti restano da spendere</div>
       <div class="big num" id="remaining">–</div>
@@ -380,15 +381,14 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <input class="amount num" id="fAmount" inputmode="decimal" placeholder="0,00" autocomplete="off" aria-label="Importo">
   <label>Categoria</label>
   <div class="chips" id="fCats"></div>
+  <label>Come la conto?</label>
+  <div class="chips" id="fHow"></div>
+  <div class="howhint" id="fHowHint"></div>
   <label for="fNote">Nota (facoltativa)</label>
   <input id="fNote" maxlength="200" placeholder="es. Caffè con Marco" autocomplete="off">
   <label for="fDate">Data</label>
   <input id="fDate" type="date">
-  <div id="dinnerBox" hidden><label for="fDinner">Cena del sabato</label>
-  <select id="fDinner"><option value="auto">Automatico (sabato = cena)</option><option value="yes">Sì, è una cena</option><option value="no">No, non è una cena</option></select></div>
-  <label class="chkrow"><input type="checkbox" id="fRefund"> Me lo rimborsa qualcuno (non contarlo nelle spese)</label>
-  <div class="hint" id="refundHint" style="margin:2px 0 0">È come se non esistesse: né budget, né saldo stimato, né totali, né categorie lo contano. Quando arriva il rimborso, segna anche quell’entrata con questa spunta. Nel frattempo il saldo reale sarà più basso di quello stimato.</div>
-  <label class="chkrow" id="rememberRow" hidden><input type="checkbox" id="fRemember"> Ricorda questa categoria per questo negozio</label>
+  <label class="chkrow" id="rememberRow" hidden><input type="checkbox" id="fRemember"> Usa sempre questa categoria per questo negozio</label>
   <div class="err" id="addErr"></div>
   <button class="primary" id="addSave">Aggiungi</button>
   <button class="btn2 danger" id="txDel" style="margin-top:10px" hidden>Elimina movimento</button>
@@ -416,7 +416,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <select id="wParent"><option value="">— nessuno, acquisto a sé —</option></select></div>
   <label for="wNote">Nota (facoltativa)</label>
   <input id="wNote" maxlength="200" placeholder="es. ricondizionato, grado A" autocomplete="off">
-  <div class="hint">Il prezzo lo scrivi tu: non leggo le pagine dei negozi. Le priorità decidono chi si prende il margine per primo.</div>
+  <div class="hint">Il prezzo lo scrivi tu. Se metti il link provo anche a leggere il prezzo dal negozio. La priorità decide cosa compri per primo.</div>
   <div class="err" id="wishErr"></div>
   <button class="primary" id="wishSave">Salva</button>
   <button class="link" data-close>Annulla</button>
@@ -453,25 +453,25 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
 <section class="sheet" id="setSheet" hidden>
   <h3>Impostazioni</h3>
   <label class="switchrow" for="sDark"><span>Tema scuro<small>Si applica subito, solo su questo dispositivo</small></span><span class="switch"><input type="checkbox" id="sDark"><i></i></span></label>
-  <label for="sSalary">Stipendio mensile netto (€)</label>
+  <label for="sSalary">Stipendio netto al mese (€)</label>
   <input id="sSalary" inputmode="decimal" placeholder="es. 1800">
   <label for="sDay">Giorno in cui arriva lo stipendio</label>
   <input id="sDay" inputmode="numeric" placeholder="es. 27">
-  <div class="hint">Il periodo di budget va da questo giorno al successivo. Lo stipendio viene contato in automatico: non registrarlo come entrata.</div>
-  <label for="sHabit">Cena del sabato (€ a sabato)</label>
+  <div class="hint">I conti vanno da uno stipendio al successivo. Lo stipendio lo conto da solo: non devi aggiungerlo come entrata.</div>
+  <label for="sHabit">Quanto spendi per la cena del sabato (€)</label>
   <input id="sHabit" inputmode="decimal" placeholder="es. 50">
-  <div class="hint">Quanto spendi ogni sabato in cene e uscite. Conto i sabati che ci sono nel periodo (4 o 5) e li tolgo dal margine degli obiettivi; le spese in categoria “Ristoranti” li consumano e non ti riducono il budget libero.</div>
-  <label for="sMargin">Margine di sicurezza (€)</label>
+  <div class="hint">Metto da parte questa cifra per ogni sabato fino al prossimo stipendio (4 o 5 sabati). Le spese del sabato e quelle che segni come “Cena del sabato” la usano, senza toccare i soldi liberi.</div>
+  <label for="sMargin">Riserva da non toccare mai (€)</label>
   <input id="sMargin" inputmode="decimal" placeholder="es. 200">
-  <div class="hint">Una riserva che tengo fuori dal budget e dal simulatore: un acquisto è “sì” solo se agli obiettivi resta almeno questa cifra.</div>
-  <label for="sLeft">Cene ancora previste fino al prossimo stipendio (€)</label>
+  <div class="hint">Soldi che faccio finta di non avere, per sicurezza. Lascia 0 se non ti serve.</div>
+  <label for="sLeft">Solo per questo mese: quanto spenderai ancora in cene (€)</label>
   <input id="sLeft" inputmode="decimal" placeholder="lascia vuoto per il calcolo automatico">
-  <div class="hint">Se sai già quanto spenderai in cene da qui al prossimo stipendio, scrivilo: vale solo per questo periodo.</div>
+  <div class="hint">Se lo sai già, scrivilo e uso questa cifra al posto del calcolo sui sabati. Al prossimo stipendio torna automatico.</div>
   <div class="sub-h">Saldo del conto</div>
   <label for="sBal">Saldo attuale del conto (€)</label>
   <input id="sBal" inputmode="decimal" placeholder="es. 3200">
-  <div class="hint">Da qui in poi lo aggiorno io con spese ed entrate. Se si scosta dalla realtà, correggilo.</div>
-  <div class="hint">Gli obiettivi (cifra + data) si aggiungono dalla sezione "Obiettivi sul conto". Puoi averne più d'uno: vale il più stringente.</div>
+  <div class="hint">Da qui in poi lo aggiorno io con le spese e le entrate. Se non torna con la banca, correggilo.</div>
+  <div class="hint">Gli obiettivi (cifra e data) si aggiungono nella scheda Obiettivi. Se ne hai più di uno, conta quello più difficile da raggiungere.</div>
   <div class="err" id="setErr"></div>
   <button class="primary" id="setSave">Salva</button>
   <button class="link" id="btnLogout">Cambia chiave di accesso</button>
@@ -487,11 +487,11 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
     <div><label for="rAmount">Importo (€)</label><input id="rAmount" inputmode="decimal" placeholder="0,00"></div>
     <div id="rDayBox"><label for="rDay">Giorno del mese</label><input id="rDay" inputmode="numeric" placeholder="es. 5"></div>
   </div>
-  <label class="chkrow"><input type="checkbox" id="rInst"> Pagamento a rate (escluso dal totale delle ricorrenti)</label>
-  <label class="chkrow"><input type="checkbox" id="rFlex"> Giorno variabile (una volta al mese, senza data fissa)</label>
-  <label for="rMatch">Parola nell'e-mail (facoltativa)</label>
+  <label class="chkrow"><input type="checkbox" id="rInst"> È una rata (non la conto nel totale delle spese fisse)</label>
+  <label class="chkrow"><input type="checkbox" id="rFlex"> Non ha un giorno fisso (una volta al mese)</label>
+  <label for="rMatch">Come la riconosco nelle e-mail della banca (facoltativo)</label>
   <input id="rMatch" maxlength="60" placeholder="es. NETFLIX" autocomplete="off" autocapitalize="off">
-  <div class="hint">Quando arriva un’e-mail di Intesa che contiene questa parola (e un importo simile), la spesa risulta verificata. Se vuoto uso il nome. Finché non arriva l’e-mail, l’importo resta riservato nel budget.</div>
+  <div class="hint">Una parola che compare nell’e-mail di Intesa, es. NETFLIX. Quando arriva (con un importo simile) la segno come pagata. Se la lasci vuota uso il nome. Finché non è pagata, i soldi restano messi da parte.</div>
   <div class="row2">
     <div><label for="rStart">Dal (facoltativo)</label><input id="rStart" type="date"></div>
     <div><label for="rUntil">Ultimo addebito</label><input id="rUntil" type="date"></div>
@@ -509,7 +509,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <div class="actions">
     <button class="btn2" id="recEdit">Modifica</button>
     <button class="btn2" id="recPaid">Segna come pagata ora</button>
-    <button class="btn2" id="recPaidIn">È già nel saldo che ho inserito</button>
+    <button class="btn2" id="recPaidIn">L’avevo già pagata quando ho inserito il saldo</button>
     <button class="btn2 danger" id="recDel">Elimina ricorrente</button>
   </div>
   <button class="link" data-close>Chiudi</button>
@@ -522,7 +522,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
     <div><label for="gAmount">Voglio arrivare a (€)</label><input id="gAmount" inputmode="decimal" placeholder="es. 20000"></div>
     <div><label for="gDate">Entro il</label><input id="gDate" type="date"></div>
   </div>
-  <div class="hint">Con più obiettivi il budget segue quello che stringe di più.</div>
+  <div class="hint">Se hai più obiettivi, conta quello più difficile da raggiungere.</div>
   <div class="err" id="goalErr"></div>
   <button class="primary" id="goalSave">Aggiungi</button>
   <button class="link" data-close>Annulla</button>
@@ -551,7 +551,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
       <select id="bMonth"></select></div>
     <div><label for="bDay">Giorno</label><input id="bDay" inputmode="numeric" placeholder="es. 24"></div>
   </div>
-  <div class="hint">Si ripete ogni anno. Conta come entrata nel periodo in cui arriva, non prima.</div>
+  <div class="hint">Si ripete ogni anno. La conto quando arriva, non prima.</div>
   <div class="err" id="bonErr"></div>
   <button class="primary" id="bonSave">Aggiungi</button>
   <button class="link" data-close>Annulla</button>
@@ -630,8 +630,68 @@ function toast(msg, act) {
     t.appendChild(b);
   }
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), act ? 6000 : 1800);
+  setTimeout(() => t.remove(), act ? 6000 : msg.length > 40 ? 5000 : 1800);
 }
+
+// ---- Frase del giorno: come sei messo, detto in parole ----
+function renderSay(d) {
+  const el = $('#homeSay');
+  const t = d.totals, p = d.period;
+  if (!t || !p) { el.hidden = true; return; }
+  const free = t.remaining, hl = t.habitLeft || 0;
+  const dl = Math.max(p.daysLeft, 1);
+  const end = new Date(p.end + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  const goal = d.goal && !d.goal.expired;
+  const cene = hl > 0 ? `, più ${eur0.format(hl)} per le cene del sabato` : '';
+  const perDay = free / dl;
+  const day = perDay >= 1 ? `circa ${eur0.format(perDay)} al giorno` : 'meno di 1 € al giorno';
+  let main;
+  if (free < 0) {
+    main = goal
+      ? `Sei ${eur0.format(-free)} oltre il piano. Non è un dramma: se non recuperi da qui al ${end}, li tolgo dai prossimi stipendi per restare sull’obiettivo.`
+      : `Sei ${eur0.format(-free)} oltre il budget di questo stipendio.`;
+  } else if (t.budget > 0 && free / t.budget < 0.15) {
+    main = `Vai piano: fino allo stipendio del ${end} ti restano ${eur0.format(free)} liberi, ${day}${cene}.`;
+  } else {
+    main = `${goal ? 'Sei in linea. ' : ''}Fino allo stipendio del ${end} puoi spendere ancora ${eur0.format(free)} liberi, ${day}${cene}.`;
+  }
+  const extra = [];
+  const ask = (d.dinnerAsk || []).length, ib = (d.inbox || []).length;
+  if (ask) extra.push(ask === 1 ? 'C’è una spesa che potrebbe essere una cena: dimmelo qui sotto.' : `Ci sono ${ask} spese che potrebbero essere cene: dimmelo qui sotto.`);
+  if (ib) extra.push(ib === 1 ? 'C’è un messaggio della banca che non ho capito: guardalo qui sotto.' : `Ci sono ${ib} messaggi della banca che non ho capito: guardali qui sotto.`);
+  const todayIso = d.today;
+  const wk = d.settings && d.settings.habit_weekly;
+  if (wk > 0 && new Date(todayIso + 'T12:00:00').getDay() === 6) extra.push(`Oggi è sabato: per la cena hai ${eur0.format(wk)} già messi da parte.`);
+  const soon = (d.recurring || []).filter((r) => r.status === 'pending' && !r.flex && r.due >= todayIso && diffDaysLocal(todayIso, r.due) <= 3)
+    .sort((a, b) => a.due.localeCompare(b.due))[0];
+  if (soon) {
+    const n = diffDaysLocal(todayIso, soon.due);
+    extra.push(`${n === 0 ? 'Oggi' : n === 1 ? 'Domani' : `Fra ${n} giorni`} parte “${soon.name}” (${eur.format(soon.amount)}): è già messa in conto, non devi toglierla tu.`);
+  }
+  const last = (d.allTransactions || d.transactions || [])[0];
+  if (last && diffDaysLocal(last.date, todayIso) <= 1 && last.eff && last.eff !== 'ask') {
+    extra.push(`Ultimo movimento: ${last.note || last.category}, ${eur.format(last.amount)}, ${effText(last)}.`);
+  }
+  el.innerHTML = `<p class="say1">${esc(main)}</p>${extra.slice(0, 2).map((x) => `<p class="say2">${esc(x)}</p>`).join('')}`;
+  el.hidden = false;
+}
+const diffDaysLocal = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000);
+
+// ---- Cosa ha fatto un movimento, in parole ----
+function effText(x, short) {
+  const inc = x.type === 'income';
+  switch (x.eff) {
+    case 'refund': return inc ? 'rimborso: non lo conto' : 'te la ridanno: non la conto';
+    case 'old': return 'già compresa nel saldo che hai inserito';
+    case 'rec': return `spesa fissa “${x.rec}”, già messa in conto`;
+    case 'income': return 'aggiunta ai soldi liberi';
+    case 'dinner': return short ? 'presa dalle cene' : 'presa dalle cene, i soldi liberi non cambiano';
+    case 'ask': return short ? 'cena? dimmelo' : 'è una cena? toccala per dirmelo';
+    case 'free': return 'tolta dai soldi liberi';
+    default: return '';
+  }
+}
+const effClass = (x) => (x.eff === 'ask' || x.eff === 'refund' ? ' class="effw"' : '');
 
 // ---- Render ----
 const shortDate = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
@@ -647,7 +707,7 @@ let openGoals = null;
 function render(d) {
   data = d;
   const { period: p, totals: t, settings: s } = d;
-  $('#periodLabel').textContent = `Periodo ${shortDate(p.start)} → ${shortDate(p.end)}`;
+  $('#periodLabel').textContent = `Stipendio del ${shortDate(p.start)} · il prossimo arriva il ${shortDate(p.end)}`;
   $('#hero').hidden = false;
 
   const ratio = t.budget > 0 ? t.remaining / t.budget : 0;
@@ -665,7 +725,7 @@ function render(d) {
   const days = `${dl} ${dl === 1 ? 'giorno' : 'giorni'} al prossimo stipendio`;
   $('#heroSub').innerHTML = hl > 0
     ? (t.remaining >= 0
-      ? `di cui <b class="num">${eur0.format(hl)}</b> per le cene e <b class="num">${eur0.format(t.remaining)}</b> oltre la cena · ${days}`
+      ? `<b class="num">${eur0.format(t.remaining)}</b> liberi + <b class="num">${eur0.format(hl)}</b> per le cene del sabato · ${days}`
       : `più <b class="num">${eur0.format(hl)}</b> già riservati per le cene · ${days}`)
     : days;
 
@@ -677,7 +737,7 @@ function render(d) {
   $('#stIncome').textContent = eur0.format(t.income);
   $('#stSpent').textContent = eur0.format(t.spent);
   const toGoal = d.goal && !d.goal.expired;
-  $('#stSaveK').textContent = toGoal ? 'All’obiettivo' : 'Da parte';
+  $('#stSaveK').textContent = toGoal ? 'Mancano all’obiettivo' : 'Da parte';
   $('#stSave').textContent = eur0.format(toGoal ? t.toGoal : t.savings);
 
 
@@ -689,7 +749,7 @@ function render(d) {
   // movimenti
   const list = $('#list');
   if (!d.transactions.length) {
-    list.innerHTML = '<div class="empty">Nessun movimento in questo periodo.<br>Tocca “+ Aggiungi” per iniziare.</div>';
+    list.innerHTML = '<div class="empty">Nessun movimento da questo stipendio.<br>Tocca “+ Aggiungi” per iniziare.</div>';
   } else {
     let html = '', last = '';
     for (const x of d.transactions) {
@@ -697,7 +757,7 @@ function render(d) {
       const inc = x.type === 'income';
       html += `<button class="tx ${inc ? 'inc' : ''}" data-id="${x.id}">
         ${catIcon(x.category, x.type)}
-        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}${x.dn === 'yes' ? ' · cena' : x.dn === 'ask' ? ' · <b style="color:var(--warn)">cena? da confermare</b>' : ''}${x.refund ? ' · <b style="color:var(--warn)">rimborsato da altri, non conteggiato</b>' : ''}</div></span>
+        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}${x.eff ? ` · <span${effClass(x)}>${esc(effText(x))}</span>` : ''}</div></span>
         <span class="amt num" ${x.refund ? 'style="opacity:.55;text-decoration:line-through"' : ''}>${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
     }
     list.innerHTML = html;
@@ -714,18 +774,18 @@ function render(d) {
       const sal = g.paydays === 1 ? '1 stipendio' : `${g.paydays} stipendi`;
       const piu = g.bonus > 0 ? ` + mensilità extra ${eur0.format(g.bonus)}` : '';
       const txt = g.expired
-        ? `La data è passata. Saldo stimato ${m(d.balance)}.`
+        ? `La data è passata. Sul conto dovresti avere ${m(d.balance)}.`
         : g.feasible
-          ? `Da qui alla data entrano ≈ ${m(g.income)} (${sal}${piu}) e te ne servono ${m(Math.max(0, g.need))} per arrivare alla cifra${g.habit > 0 ? ` (più ≈ ${m(g.habit)} di spese abituali)` : ''}: in tutto puoi spendere ≈ ${m(g.spendable)}.`
+          ? `Da qui alla data entrano circa ${m(g.income)} (${sal}${piu}). Tolte spese fisse${g.habit > 0 ? ' e cene' : ''} e la cifra da mettere da parte, puoi spendere ancora circa ${m(g.spendable)} in tutto, fino al ${full(g.date)}.`
           : `Così non ci arrivi: mancano ≈ ${m(-g.spendable)} anche spendendo zero. Sposta la data più avanti o abbassa la cifra.`;
       const mg = g.expired ? null : g.spendable - (g.margin || 0);
-      const pill = g.expired ? '<span class="pill">Scaduto</span>' : !g.feasible ? '<span class="pill late">Non ci arrivi</span>' : g.binding && d.goals.length > 1 ? '<span class="pill guide">Guida il budget</span>' : '<span class="pill ok">Regge</span>';
+      const pill = g.expired ? '<span class="pill">Scaduto</span>' : !g.feasible ? '<span class="pill late">Non ci arrivi</span>' : g.binding && d.goals.length > 1 ? '<span class="pill guide">Il più stretto</span>' : '<span class="pill ok">Ci arrivi</span>';
       return `<details class="goal${!g.expired && !g.feasible ? ' bad' : ''}" data-id="${g.id}"${openGoals.has(String(g.id)) ? ' open' : ''}>
         <summary><span class="gs-main"><b>${eur0.format(g.amount)}</b><span class="gs-sub">entro ${full(g.date)}</span></span>
-          <span class="gs-right">${pill}${mg === null ? '' : `<span class="gs-margin">spazio libero ${mg < 0 ? '−' : ''}${eur0.format(Math.abs(mg))}</span>`}</span></summary>
+          <span class="gs-right">${pill}${mg === null ? '' : `<span class="gs-margin">${mg < 0 ? 'mancano ' + eur0.format(-mg) : 'puoi spendere ' + eur0.format(mg)}</span>`}</span></summary>
         <div class="gbody">
           <div class="bar"><i style="width:${gp}%"></i></div>
-          <div class="g2">Saldo stimato ${m(d.balance)}. ${txt}</div>
+          <div class="g2">Sul conto dovresti avere ${m(d.balance)}. ${txt}</div>
           <div class="g3"><a class="goalSync">Aggiorna saldo</a><a class="goalDel" style="color:var(--bad)">Elimina</a></div>
         </div>
       </details>`;
@@ -740,10 +800,10 @@ function render(d) {
   if (hg) {
     const hp = Math.max(0, Math.min(100, (d.balance / hg.amount) * 100));
     const hm = hg.spendable - (hg.margin || 0);
-    $('#homeGoal').innerHTML = `<div class="k">${d.goals.length > 1 ? 'Obiettivo che guida il budget' : 'Il tuo obiettivo'}</div>
+    $('#homeGoal').innerHTML = `<div class="k">${d.goals.length > 1 ? 'Il prossimo obiettivo (quello più stretto)' : 'Il tuo obiettivo'}</div>
       <div class="t"><b>${eur0.format(hg.amount)}</b><span class="muted">entro ${full(hg.date)}</span></div>
       <div class="bar"><i style="width:${hp}%"></i></div>
-      <div class="s">Saldo stimato ${m(d.balance)} · ${hg.feasible ? `spazio libero ${m(Math.max(0, hm))}${hm < 0 ? ' (sotto la riserva)' : ''}` : `<b style="color:var(--bad)">non ci arrivi</b>`}${d.goals.length > 1 ? ` · ${d.goals.length} obiettivi` : ''}</div>`;
+      <div class="s">Sul conto ${m(d.balance)} · ${hg.feasible ? `fino al ${full(hg.date)} puoi spendere ancora ${m(Math.max(0, hm))}` : `<b style="color:var(--bad)">così non ci arrivi</b>`}${d.goals.length > 1 ? ` · ${d.goals.length} obiettivi` : ''}</div>`;
   }
 
   const how = $('#homeHow');
@@ -751,16 +811,16 @@ function render(d) {
   if (hg && hg.feasible) {
     const free = hg.spendable - (hg.margin || 0), L = hg.perDay > 0 ? Math.round(hg.budget / hg.perDay) : 0;
     const row = (k, v, cls = '') => `<div class="r ${cls}"><span>${k}</span><span class="num">${v}</span></div>`;
-    how.innerHTML = `<summary>Cosa significa “spazio libero ${eur0.format(Math.max(0, free))}”?</summary><div class="hb">
-      <p>È quanto puoi ancora spendere da qui al ${full(hg.date)} per spese <b>non previste</b> (spesa, benzina, regali, sfizi…) e arrivare comunque a ${eur0.format(hg.amount)}. Le spese ricorrenti e le cene abituali sono già tolte: non vanno sottratte di nuovo.</p>
-      ${row('Saldo di partenza (all’inizio di questo periodo)', eur0.format(hg.spendable + hg.amount - hg.income + hg.recurring + hg.habit))}
+    how.innerHTML = `<summary>Come faccio questi conti?</summary><div class="hb">
+      <p>Parto dai soldi che hai, aggiungo gli stipendi in arrivo e tolgo tutto quello che è già previsto. Quello che resta, ${eur0.format(Math.max(0, free))}, è quanto puoi spendere fino al ${full(hg.date)} per le cose <b>non previste</b> (spesa, benzina, regali, sfizi) e arrivare comunque a ${eur0.format(hg.amount)}. Spese fisse e cene sono già tolte: non devi toglierle tu.</p>
+      ${row('Soldi sul conto all’ultimo stipendio', eur0.format(hg.spendable + hg.amount - hg.income + hg.recurring + hg.habit))}
       ${row('+ Entrate fino alla data (stipendi' + (hg.bonus > 0 ? ' e mensilità extra' : '') + ')', '+' + eur0.format(hg.income))}
       ${row('− Spese ricorrenti fino alla data', '−' + eur0.format(hg.recurring))}
-      ${hg.habit > 0 ? row('− Cene e spese abituali previste', '−' + eur0.format(hg.habit)) : ''}
+      ${hg.habit > 0 ? row('− Cene del sabato previste', '−' + eur0.format(hg.habit)) : ''}
       ${row('− Il tuo obiettivo', '−' + eur0.format(hg.amount))}
-      ${hg.margin > 0 ? row('− Margine di sicurezza', '−' + eur0.format(hg.margin)) : ''}
-      ${row('= Spazio libero', eur0.format(Math.max(0, free)), 'tot')}
-      <p style="margin-top:12px">${L > 0 ? `Spalmato sui ${hg.days} giorni fino alla data fa ≈ ${eur.format(hg.perDay)} al giorno: per i ${L} giorni di questo periodo sono ≈ ${eur0.format(hg.budget)}, che con le cene fanno la cifra “Ti restano da spendere” qui sopra. ` : ''}Se spendi di meno, il resto resta tuo e il periodo dopo hai di più; se spendi di più, il periodo dopo hai di meno.</p></div>`;
+      ${hg.margin > 0 ? row('− Riserva da non toccare', '−' + eur0.format(hg.margin)) : ''}
+      ${row('= Puoi spendere', eur0.format(Math.max(0, free)), 'tot')}
+      <p style="margin-top:12px">${L > 0 ? `Spalmato sui ${hg.days} giorni fino alla data fa ≈ ${eur.format(hg.perDay)} al giorno: per i ${L} giorni fino al prossimo stipendio sono ≈ ${eur0.format(hg.budget)}, che con le cene fanno la cifra grande in alto. ` : ''}Se spendi di meno, il prossimo stipendio avrai di più; se spendi di più, avrai di meno.</p></div>`;
   }
 
   // home: prossimi addebiti e accrediti
@@ -782,10 +842,10 @@ function render(d) {
       const inc = x.type === 'income';
       return `<button class="tx ${inc ? 'inc' : ''}" data-go="mov">
         ${catIcon(x.category, x.type)}
-        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)} · ${esc(dayLabel(x.date))}</div></span>
+        <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(dayLabel(x.date))}${x.eff ? ` · <span${effClass(x)}>${esc(effText(x, true))}</span>` : ''}</div></span>
         <span class="amt num">${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
     }).join('') + '<button class="more" data-go="mov">Tutti i movimenti</button>'
-    : '<div class="empty">Nessun movimento in questo periodo.<br>Tocca “+ Aggiungi” per iniziare.</div>';
+    : '<div class="empty">Nessun movimento da questo stipendio.<br>Tocca “+ Aggiungi” per iniziare.</div>';
 
   // messaggi da controllare
   const ib = d.inbox || [];
@@ -796,7 +856,7 @@ function render(d) {
     <div class="acts"><button class="btn2 inbOk">Registra</button><button class="btn2 inbNo">Scarta</button></div></div>`).join('');
   const da = d.dinnerAsk || [];
   const dd = $('#homeDinner'); dd.hidden = !da.length;
-  dd.innerHTML = da.length ? `<b>${da.length === 1 ? 'Questa spesa fa parte della cena?' : 'Queste spese fanno parte della cena?'}</b><div class="hint" style="margin:2px 0 0">Le cene del sabato (${eur0.format(d.settings.habit_weekly || 0)} a sabato) sono già riservate nel budget: dimmi quali spese le consumano.</div>` +
+  dd.innerHTML = da.length ? `<b>${da.length === 1 ? 'Questa spesa fa parte della cena?' : 'Queste spese fanno parte della cena?'}</b><div class="hint" style="margin:2px 0 0">Le cene del sabato (${eur0.format(d.settings.habit_weekly || 0)} a sabato) sono già riservate nel budget: dimmi se queste spese fanno parte della cena: se sì, non toccano i soldi liberi.</div>` +
     da.slice(0, 5).map((x) => `<div class="q" data-id="${x.id}"><span class="tx1">${esc(x.note || x.category)} · ${eur.format(x.amount)}<small>${esc(x.category)} · ${esc(dayLabel(x.date))}${x.sat ? '' : ' · non di sabato'}</small></span><button class="yes" data-a="1">Sì, cena</button><button data-a="0">No</button></div>`).join('') : '';
   $('#homeInbox').hidden = !ib.length;
   $('#homeInboxN').textContent = ib.length === 1 ? '1 messaggio da controllare' : ib.length + ' messaggi da controllare';
@@ -804,16 +864,16 @@ function render(d) {
   // spese ricorrenti
   const rc = d.recurring;
   if (!rc.length) {
-    $('#recList').innerHTML = '<div class="empty">Nessuna spesa ricorrente.<br>Aggiungi affitto, abbonamenti, rate: le riservo nel budget finché l’e-mail della banca non le conferma.</div>';
+    $('#recList').innerHTML = '<div class="empty">Nessuna spesa ricorrente.<br>Aggiungi affitto, abbonamenti, rate: le metto da parte finché l’e-mail della banca non dice che sono pagate.</div>';
   } else {
     $('#recList').innerHTML = rc.map((r) => {
       const ok = r.status === 'verified';
       const sch = r.status === 'scheduled';
       const rata = r.installment ? '<span class="pill">A rate</span>' : '';
-      const pill = rata + (ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa e-mail</span>');
+      const pill = rata + (ok ? '<span class="pill ok">Pagata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non ancora vista</span>' : '<span class="pill">Da pagare</span>');
       const last = r.until ? ` · ultimo addebito ${shortDate(r.until)}` : '';
       return `<button class="rec" data-id="${r.id}">${recIcon(r.name)}<span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
-        <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : r.flex && !sch ? 'giorno variabile · in arrivo questo mese' : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(r.flex && ok ? ' · giorno variabile' : '') + esc(last)}</div></span>
+        <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : r.flex && !sch ? 'senza giorno fisso · arriva questo mese' : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(r.flex && ok ? ' · senza giorno fisso' : '') + esc(last)}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
     }).join('') + (() => {
       const amt = (r) => (r.status === 'verified' ? r.paid.amount : r.amount);
@@ -824,7 +884,7 @@ function render(d) {
       return `<div class="rectot"><div class="row"><span>Totale spese ricorrenti</span><b class="num">${eur.format(sum(fixed))}</b></div>` +
         (paid.length && left.length ? `<div class="sub"><span>già pagate ${eur.format(sum(paid))}</span><span>ancora da pagare ${eur.format(sum(left))}</span></div>` : '') +
         (rate.length ? `<div class="sub"><span>escluse le rate</span><span>${eur.format(sum(rate))}</span></div>` : '') + '</div>';
-    })() + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'In arrivo in questo periodo (già esclusi dal budget libero)' : 'Riservati nel budget per questo periodo'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
+    })() + (t.reserved > 0 ? `<div class="recnote">${d.goal && !d.goal.expired ? 'Ancora da pagare prima dello stipendio (già tolti dai soldi liberi)' : 'Messi da parte prima dello stipendio'}: <b class="num">${eur.format(t.reserved)}</b></div>` : '');
   }
 
   // mensilità aggiuntive
@@ -843,6 +903,8 @@ function render(d) {
         <div class="t2">${ok ? 'accreditata il ' : 'prevista il '}${esc(new Date(b.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
         <span class="amt num">≈ ${eur0.format(b.amount)}</span></button>`;
     }).join('');
+
+  renderSay(d);
 
   // prima configurazione
   if (s.salary === 0 && !localStorage.getItem('setupShown')) {
@@ -874,6 +936,20 @@ async function load() {
   firstLoad = false;
 }
 
+// Ricarica e dice in parole cosa è cambiato nei soldi liberi e nelle cene
+async function loadExplained(prefix, act) {
+  const t0 = data && data.totals ? { f: data.totals.remaining, h: data.totals.habitLeft || 0 } : null;
+  await load();
+  const t1 = data && data.totals ? { f: data.totals.remaining, h: data.totals.habitLeft || 0 } : null;
+  if (!t0 || !t1) return toast(prefix, act);
+  const ch = (a, b) => Math.round(a) !== Math.round(b);
+  const parts = [];
+  if (ch(t0.f, t1.f)) parts.push(`soldi liberi ${eur0.format(t0.f)} → ${eur0.format(t1.f)}`);
+  if (ch(t0.h, t1.h)) parts.push(`cene ${eur0.format(t0.h)} → ${eur0.format(t1.h)}`);
+  const tail = parts.length ? ' ' + parts.join(', ').replace(/^./, (c) => c.toUpperCase()) + '.' : ' I soldi liberi non cambiano.';
+  toast(prefix + tail, act);
+}
+
 let editTx = null, inboxSel = null;
 let wishItems = [], wishSel = null, wishEditId = null, wishPrio = 2;
 $('#list').addEventListener('click', (e) => {
@@ -892,7 +968,51 @@ function setType(t) {
   $('#segExp').classList.toggle('on', t === 'expense');
   $('#segInc').classList.toggle('on', t === 'income');
   renderChips();
+  howSel = 'normal'; renderHow();
 }
+// "Come la conto?": una sola domanda al posto di spunte e tendine, con una frase che dice cosa succede
+let howSel = 'normal';
+const hasDinners = () => !!(data && data.settings && data.settings.habit_weekly > 0);
+function howOptions() {
+  return type === 'expense'
+    ? [['normal', 'Spesa normale'], ...(hasDinners() ? [['dinner', 'Cena del sabato']] : []), ['refund', 'Me la ridanno']]
+    : [['normal', 'Entrata extra'], ['refund', 'Rimborso di una spesa']];
+}
+function renderHow() {
+  const opts = howOptions();
+  if (!opts.some(([k]) => k === howSel)) howSel = 'normal';
+  $('#fHow').innerHTML = opts.map(([k, l]) => `<button type="button" class="chip ${k === howSel ? 'on' : ''}" data-k="${k}">${l}</button>`).join('');
+  $('#fHowHint').textContent = howHint();
+}
+function howHint() {
+  const a = parseNum($('#fAmount').value) || 0;
+  const t = data && data.totals;
+  const end = data ? shortDate(data.period.end) : '';
+  const free = t ? t.remaining : null, hl = t ? t.habitLeft || 0 : 0;
+  // In modifica non conosco l'effetto "di prima": spiego senza numeri
+  const nums = !editTx && t && a > 0;
+  if (type === 'expense') {
+    if (howSel === 'refund') return 'Non la conto da nessuna parte: né nei soldi liberi, né nel saldo. Quando ti ridanno i soldi, segna anche quell’entrata come “Rimborso di una spesa”.';
+    if (howSel === 'dinner') {
+      if (!nums) return `La prendo dai soldi delle cene del sabato: i soldi liberi non cambiano.`;
+      return a <= hl
+        ? `La prendo dalle cene (ne restano ${eur0.format(hl - a)}): i soldi liberi non cambiano.`
+        : `Supera le cene rimaste di ${eur0.format(a - hl)}: quella parte la tolgo dai soldi liberi.`;
+    }
+    if (!nums) return 'La tolgo dai soldi liberi.';
+    const left = free - a;
+    return left >= 0
+      ? `La tolgo dai soldi liberi: fino al ${end} te ne resteranno ${eur0.format(left)}.`
+      : `La tolgo dai soldi liberi: andresti ${eur0.format(-left)} oltre il piano fino al ${end}.`;
+  }
+  if (howSel === 'refund') return 'Non la conto: serve solo a pareggiare una spesa che avevi segnato come “Me la ridanno”.';
+  return nums ? `La aggiungo ai soldi liberi: fino al ${end} ne avrai ${eur0.format(free + a)}.` : 'La aggiungo ai soldi liberi.';
+}
+$('#fHow').addEventListener('click', (e) => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  howSel = c.dataset.k; renderHow();
+});
+$('#fAmount').addEventListener('input', () => { $('#fHowHint').textContent = howHint(); });
 $('#segExp').onclick = () => setType('expense');
 $('#segInc').onclick = () => setType('income');
 $('#fCats').addEventListener('click', (e) => {
@@ -909,14 +1029,16 @@ function openAdd({ edit = null, inbox = null } = {}) {
   $('#addSave').textContent = edit ? 'Salva' : 'Aggiungi';
   $('#txDel').hidden = !edit;
   $('#rememberRow').hidden = !edit; $('#fRemember').checked = false;
-  $('#fRefund').checked = !!(edit && edit.refund);
-  $('#dinnerBox').hidden = !(edit && edit.type === 'expense' && data && data.settings && data.settings.habit_weekly > 0);
-  $('#fDinner').value = edit && edit.dinner === true ? 'yes' : edit && edit.dinner === false ? 'no' : 'auto';
   $('#inbMsg').hidden = !inbox; if (inbox) $('#inbMsg').textContent = inbox.text.slice(0, 400);
   const amt = base && base.amount != null ? base.amount : '';
   $('#fAmount').value = amt === '' ? '' : Number(amt).toFixed(2).replace('.', ',');
   $('#fNote').value = base ? base.note || '' : '';
   $('#fDate').value = base && base.date ? base.date : todayLocal();
+  // Scelta iniziale: com'è contata adesso; per una nuova spesa di sabato propongo la cena
+  const isSatDate = (iso) => new Date(iso + 'T12:00:00').getDay() === 6;
+  howSel = edit ? (edit.refund ? 'refund' : edit.eff === 'dinner' || edit.dinner === true ? 'dinner' : 'normal')
+    : (type === 'expense' && hasDinners() && isSatDate($('#fDate').value) ? 'dinner' : 'normal');
+  renderHow();
   $('#addErr').textContent = '';
   openSheet('addSheet');
   if (!edit) setTimeout(() => $('#fAmount').focus(), 250);
@@ -925,20 +1047,20 @@ $('#fab').onclick = () => openAdd();
 $('#addSave').onclick = async () => {
   const amount = parseNum($('#fAmount').value);
   if (!(amount > 0)) { $('#addErr').textContent = 'Inserisci un importo valido'; return; }
-  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal(), refund: $('#fRefund').checked, ...(editTx && !$('#dinnerBox').hidden ? { dinner: { auto: null, yes: true, no: false }[$('#fDinner').value] } : {}) };
+  const body = { type, amount, category: cat, note: $('#fNote').value, date: $('#fDate').value || todayLocal(), refund: howSel === 'refund',
+    ...(type === 'expense' && hasDinners() ? { dinner: howSel === 'dinner' ? true : howSel === 'normal' ? false : null } : {}) };
   $('#addSave').disabled = true;
   try {
     if (editTx) {
       await api('transactions?id=' + editTx.id, { method: 'PUT', body: JSON.stringify({ ...body, remember: $('#fRemember').checked }) });
-      toast($('#fRemember').checked ? 'Salvato, categoria ricordata' : 'Salvato');
+      closeSheets(); loadExplained($('#fRemember').checked ? 'Salvato, categoria ricordata.' : 'Salvato.');
     } else if (inboxSel) {
       await api('inbox', { method: 'POST', body: JSON.stringify({ ...body, id: inboxSel.id, action: 'confirm' }) });
-      toast('Registrato');
+      closeSheets(); loadExplained('Registrato.');
     } else {
       await api('transactions', { method: 'POST', body: JSON.stringify(body) });
-      toast(type === 'expense' ? 'Spesa aggiunta' : 'Entrata aggiunta');
+      closeSheets(); loadExplained(type === 'expense' ? 'Spesa aggiunta.' : 'Entrata aggiunta.');
     }
-    closeSheets(); load();
   } catch (e) { $('#addErr').textContent = e.message; }
   finally { $('#addSave').disabled = false; }
 };
@@ -946,11 +1068,10 @@ $('#txDel').onclick = async () => {
   const x = editTx; if (!x) return;
   try {
     await api('transactions?id=' + x.id, { method: 'DELETE' });
-    closeSheets(); load();
-    toast('Eliminato', { label: 'Annulla', fn: async () => {
+    closeSheets(); await loadExplained('Eliminato.', { label: 'Annulla', fn: async () => {
       try {
         await api('transactions', { method: 'POST', body: JSON.stringify({ type: x.type, amount: x.amount, category: x.category, note: x.note, date: x.date, inBalance: x.fresh === false }) });
-        toast('Ripristinato'); load();
+        loadExplained('Ripristinato.');
       } catch (err) { alert(err.message); }
     } });
   } catch (err) { $('#addErr').textContent = err.message; }
@@ -1079,7 +1200,7 @@ function renderPie(cats, spent) {
   const sel = pieSel ? cats.find((c) => c.category === pieSel) : null;
   const center = sel
     ? `<text class="ctr"><tspan class="t1" x="100" y="90">${esc(sel.category)}</tspan><tspan class="t2" x="100" y="113">${eur0.format(sel.total)}</tspan><tspan class="t3" x="100" y="131">${Math.round(sel.total / tot * 100)}%</tspan></text>`
-    : `<text class="ctr"><tspan class="t1" x="100" y="92">Spese del periodo</tspan><tspan class="t2" x="100" y="116">${eur0.format(tot)}</tspan></text>`;
+    : `<text class="ctr"><tspan class="t1" x="100" y="92">Spese da stipendio</tspan><tspan class="t2" x="100" y="116">${eur0.format(tot)}</tspan></text>`;
   const legend = cats.map((c) => `
     <div class="it${pieSel === c.category ? ' on' : ''}" data-c="${esc(c.category)}">
       ${catIcon(c.category)}<span class="nm">${esc(c.category)}</span>
@@ -1153,7 +1274,7 @@ $('#sDark').onchange = () => setTheme($('#sDark').checked ? 'dark' : 'light');
 $('#homeDinner').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-a]'); if (!b) return;
   const q = b.closest('.q'); b.disabled = true;
-  try { await api('transactions?id=' + q.dataset.id, { method: 'PUT', body: JSON.stringify({ dinner: b.dataset.a === '1' }) }); toast(b.dataset.a === '1' ? 'Contata come cena' : 'Non è una cena'); load(); }
+  try { await api('transactions?id=' + q.dataset.id, { method: 'PUT', body: JSON.stringify({ dinner: b.dataset.a === '1' }) }); loadExplained(b.dataset.a === '1' ? 'Contata come cena.' : 'Non è una cena.'); }
   catch (err) { alert(err.message); b.disabled = false; }
 });
 $('#balSave').onclick = async () => {
@@ -1191,7 +1312,7 @@ function wishPlanText(p) {
     : p.status === 'nextperiod' ? ['next', `Dal prossimo stipendio (${fullD(p.start)})`]
     : p.status === 'later' ? ['later', `Da ${fullD(p.start)}`]
     : ['free', `Dopo gli obiettivi (da ${fullD(p.start)})`];
-  const m = p.margin != null ? ` · margine dopo ≈ ${eur0.format(p.margin)}` : '';
+  const m = p.margin != null ? ` · dopo l’acquisto ti avanzano ≈ ${eur0.format(p.margin)}` : '';
   return `<div class="wp ${when[0]}">${esc(when[1])}${esc(m)}</div>`;
 }
 // Gli accessori accorpati a un acquisto (es. pellicola e cover dell'iPad) si sommano al suo prezzo e seguono la sua priorità; ognuno ha le sue rate
@@ -1357,10 +1478,10 @@ $('#recList').addEventListener('click', (e) => {
   recSel = data.recurring.find((r) => String(r.id) === b.dataset.id); if (!recSel) return;
   $('#recActTitle').textContent = recSel.name;
   $('#recActInfo').textContent = recSel.status === 'verified'
-    ? 'Confermata da un movimento registrato in questo periodo.'
+    ? 'Pagata: l’ho trovata tra i movimenti.'
     : recSel.status === 'scheduled'
       ? 'Non ancora iniziata: la tengo già in conto nel piano verso l’obiettivo.'
-      : 'Non ho ancora visto un’e-mail che la confermi: intanto l’importo resta riservato nel budget. Se l’e-mail ha un nome diverso, usa Modifica e metti la parola che compare nel messaggio.';
+      : 'Non ho ancora visto un’e-mail che la confermi: intanto i soldi restano messi da parte. Se l’e-mail ha un nome diverso, usa Modifica e metti la parola che compare nel messaggio.';
   $('#recPaid').hidden = recSel.status !== 'pending'; $('#recPaidIn').hidden = recSel.status !== 'pending';
   openSheet('recActSheet');
 });

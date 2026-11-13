@@ -37,6 +37,7 @@ export default handler(async (req, res) => {
           INSERT INTO transactions (type, amount, category, note, date, refund)
           VALUES (${b.type}, ${amt}, ${category}, ${note}, ${date}::date, ${refund})
           RETURNING id`;
+    if ([true, false].includes(b.dinner)) await sql`UPDATE transactions SET dinner = ${b.dinner} WHERE id = ${row.id}`;
     return res.status(201).json({ id: row.id });
   }
 

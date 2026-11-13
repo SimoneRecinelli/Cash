@@ -189,7 +189,7 @@ function marginChart(r) {
   const gaps = rows.map((x, i) => x.cost > 0 ? `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(x.before)}" y2="${Y(x.after)}" stroke="${x.after < 0 ? 'var(--bad)' : 'var(--accent)'}" stroke-width="3" opacity=".35" stroke-linecap="round"/>` : '').join('');
   const dots = rows.map((x, i) => `<circle cx="${X(i)}" cy="${Y(x.before)}" r="3" fill="var(--muted)"/><circle cx="${X(i)}" cy="${Y(x.after)}" r="4.5" fill="${x.after < 0 ? 'var(--bad)' : 'var(--accent)'}"/>`).join('');
   const lbl = rows.map((x, i) => (i === 0 || x.after < 0 ? `<text x="${X(i)}" y="${Y(x.after) + (x.after < 0 ? 18 : -9)}" text-anchor="${i === 0 ? 'start' : 'middle'}" style="fill:${x.after < 0 ? 'var(--bad)' : 'var(--accent)'};font-weight:600">${x.after < 0 ? '−' : ''}${eur0.format(Math.abs(x.after))}</text>` : '')).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Margine rispetto agli obiettivi, prima e dopo l’acquisto">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Quanto ti avanza rispetto agli obiettivi, prima e dopo l’acquisto">
     ${neg}${grid}<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--ink)" stroke-width="1.5" opacity=".6"/>
     <text x="${W - R}" y="${Y(0) - 5}" text-anchor="end">obiettivo${r.p.margin ? ' + riserva' : ''}</text>
     ${xl}${gaps}
@@ -230,11 +230,11 @@ function render(r) {
   if (r.level === 'ok') {
     title = 'Sì, puoi permettertelo';
     text = r.hasGoals
-      ? `${what}, ${rate}: agli obiettivi restano ≈ <b class="num">${eur0.format(w.after)}</b> di margine${r.p.margin ? ' oltre alla tua riserva' : ''}. Il punto più stretto è l’obiettivo ${eur0.format(w.g.amount)} del ${fmtD(w.g.date)}.`
+      ? `${what}, ${rate}: agli obiettivi restano ≈ <b class="num">${eur0.format(w.after)}</b> in più del necessario${r.p.margin ? ', oltre alla tua riserva' : ''}. Il punto più stretto è l’obiettivo ${eur0.format(w.g.amount)} del ${fmtD(w.g.date)}.`
       : `${what}, ${rate}: in questo periodo paghi ${eur.format(r.nowCost)} e ti restano ≈ ${eur0.format(r.rem - r.nowCost)}.`;
   } else if (r.level === 'warn') {
     title = 'Gli obiettivi reggono, ma sfori questo periodo';
-    text = `${what}, ${rate}: fino al prossimo stipendio paghi ${eur.format(r.nowCost)} ma hai a disposizione ≈ ${eur0.format(r.rem)}. Gli obiettivi reggono (margine ≈ <b class="num">${eur0.format(w.after)}</b>), però nei prossimi periodi avrai meno da spendere.`;
+    text = `${what}, ${rate}: fino al prossimo stipendio paghi ${eur.format(r.nowCost)} ma hai a disposizione ≈ ${eur0.format(r.rem)}. Arrivi comunque agli obiettivi (ti avanzano ≈ <b class="num">${eur0.format(w.after)}</b>), però nei prossimi periodi avrai meno da spendere.`;
   } else {
     title = 'Meglio di no';
     text = r.hasGoals
@@ -248,7 +248,7 @@ function render(r) {
     kpi('Questo periodo', `−${eur0.format(r.nowCost)}`, r.nowCost === 0 ? 'nessuna rata fino allo stipendio' : `ti restano ≈ ${eur0.format(Math.max(0, remAfter))}${remAfter < 0 ? ` (sfori di ${eur0.format(-remAfter)})` : ''}`, remAfter < 0 ? 'bad' : ''),
   ];
   if (r.hasGoals) {
-    kpis.push(kpi('Margine più stretto', `${w.after < 0 ? '−' : ''}${eur0.format(Math.abs(w.after))}`, `prima dell’acquisto ${eur0.format(w.before)}`, w.after < 0 ? 'bad' : w.after < 150 ? 'warn' : 'good'));
+    kpis.push(kpi('Quanto ti avanza, nel mese più stretto', `${w.after < 0 ? '−' : ''}${eur0.format(Math.abs(w.after))}`, `prima dell’acquisto ${eur0.format(w.before)}`, w.after < 0 ? 'bad' : w.after < 150 ? 'warn' : 'good'));
     const hit = r.p.rows.filter((x) => x.cost > 0).length;
     kpis.push(kpi('Obiettivi toccati', `${hit} su ${r.p.rows.length}`, r.p.rows.some((x) => x.after < 0) ? `${r.p.rows.filter((x) => x.after < 0).length} non reggono` : 'tutti reggono', r.p.rows.some((x) => x.after < 0) ? 'bad' : 'good'));
   }
@@ -257,7 +257,7 @@ function render(r) {
 
   html += `<h2>Questo periodo</h2><div class="card">${periodBar(r)}</div>`;
   if (r.hasGoals) {
-    html += `<h2>Margine a ogni scadenza</h2><div class="card">
+    html += `<h2>Quanto ti avanza a ogni obiettivo</h2><div class="card">
       <div class="legend"><span><i style="border-color:var(--muted)"></i>prima</span><span><i style="border-color:var(--accent)"></i>dopo l’acquisto</span><span><i style="border-color:var(--bad)"></i>sotto l’obiettivo</span></div>
       ${marginChart(r)}
       <p class="caption">Quanto ti avanza sopra ogni obiettivo${r.p.margin ? ' (oltre alla riserva)' : ''}, spendendo solo il necessario. Sotto la linea dello zero l’obiettivo non regge.</p></div>
@@ -274,10 +274,10 @@ function render(r) {
   // alternative
   const alts = [];
   if (r.alt.when) alts.push(r.alt.when.last
-    ? `<div>📅 Puoi permettertelo <b>dopo il ${fmtD(addDaysISO(r.alt.when.s, -1))}</b>, quando non ci saranno più obiettivi da rispettare.</div>`
-    : `<div>📅 Puoi permettertelo <b>dal ${fmtD(r.alt.when.s)}</b>: da quel giorno gli obiettivi ancora aperti reggono (purché nel frattempo non spendi il loro margine).</div>`);
-  if (r.alt.rates) alts.push(`<div>🧾 Subito, in <b>${r.alt.rates} rate</b> da ${eur.format(r.price / r.alt.rates)} ci rientri.</div>`);
-  if (r.hasGoals && r.n === 1 && r.alt.maxNow != null) alts.push(`<div>💶 In un colpo, oggi, puoi arrivare a <b>${eur0.format(r.alt.maxNow)}</b> senza toccare gli obiettivi.</div>`);
+    ? `<div>Puoi permettertelo <b>dopo il ${fmtD(addDaysISO(r.alt.when.s, -1))}</b>, quando non ci saranno più obiettivi da rispettare.</div>`
+    : `<div>Puoi permettertelo <b>dal ${fmtD(r.alt.when.s)}</b>: da quel giorno arrivi comunque a tutti gli obiettivi (se nel frattempo non spendi più del previsto).</div>`);
+  if (r.alt.rates) alts.push(`<div>Subito, in <b>${r.alt.rates} rate</b> da ${eur.format(r.price / r.alt.rates)} ci rientri.</div>`);
+  if (r.hasGoals && r.n === 1 && r.alt.maxNow != null) alts.push(`<div>In un colpo, oggi, puoi arrivare a <b>${eur0.format(r.alt.maxNow)}</b> senza toccare gli obiettivi.</div>`);
   if (r.level === 'warn') alts.push(`<div>⏳ Se la prima rata cade dopo il ${fmtD(r.p.dates[0] < data.period.end ? data.period.end : r.p.dates[0])}, non pesa su questo periodo: prova “Tra un mese”.</div>`);
   if (alts.length) html += `<h2>Alternative</h2><div class="alt">${alts.join('')}</div>`;
   if (r.n > 1) html += `<button class="primary ghost" id="aAdd">Aggiungi le rate alle spese ricorrenti</button>`;
