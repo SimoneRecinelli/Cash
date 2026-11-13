@@ -10,7 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Spese">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#f5f2ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1312" media="(prefers-color-scheme: dark)">
 <style>
 :root {
   --bg: #f5f5f0; --card: #ffffff; --ink: #14201d; --muted: #6b7773; --line: #e6e8e4;
@@ -267,6 +268,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
 .dinask .q button.yes { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .more { display: block; width: 100%; border: 0; background: none; color: var(--accent); font: 600 14px inherit; padding: 12px 0 2px; cursor: pointer; }
 </style>
+<link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <main>
@@ -275,7 +277,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
       <h1 id="tabTitle">Home</h1>
       <div class="period" id="periodLabel">&nbsp;</div>
     </div>
-    <button class="icon-btn" id="btnSettings" aria-label="Impostazioni">⚙︎</button>
+    <button class="icon-btn" id="btnSettings" aria-label="Impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
 
   <section class="tab on" id="tab-home">
@@ -688,7 +690,7 @@ function render(d) {
       if (x.date !== last) { html += `<div class="day">${esc(dayLabel(x.date))}</div>`; last = x.date; }
       const inc = x.type === 'income';
       html += `<button class="tx ${inc ? 'inc' : ''}" data-id="${x.id}">
-        <span class="dot">${esc(x.category.slice(0, 2).toUpperCase())}</span>
+        ${catIcon(x.category, x.type)}
         <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)}${x.dn === 'yes' ? ' · cena' : x.dn === 'ask' ? ' · <b style="color:var(--warn)">cena? da confermare</b>' : ''}${x.refund ? ' · <b style="color:var(--warn)">rimborsato da altri, non conteggiato</b>' : ''}</div></span>
         <span class="amt num" ${x.refund ? 'style="opacity:.55;text-decoration:line-through"' : ''}>${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
     }
@@ -762,7 +764,7 @@ function render(d) {
     ...(d.salaries || []).filter((x) => x.date > d.today).map((x) => ({ name: 'Stipendio', date: x.date, amount: x.amount, inc: true })),
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
   $('#homeUpcoming').innerHTML = ups.length
-    ? ups.map((u) => `<button class="rec" data-go="fixed"><span class="mid"><div class="t1">${esc(u.name)}${u.late ? '<span class="pill late">Non vista</span>' : ''}</div>
+    ? ups.map((u) => `<button class="rec" data-go="fixed">${u.inc ? catIcon('Entrata', 'income') : recIcon(u.name)}<span class="mid"><div class="t1">${esc(u.name)}${u.late ? '<span class="pill late">Non vista</span>' : ''}</div>
         <div class="t2">${u.flex ? 'in arrivo questo mese' : esc(new Date(u.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
         <span class="amt num" style="color:${u.inc ? 'var(--good)' : 'inherit'}">${u.inc ? '+' : '−'}${eur.format(u.amount)}</span></button>`).join('') + '<button class="more" data-go="fixed">Tutte le fisse</button>'
     : '<div class="empty">Niente in arrivo.</div>';
@@ -773,7 +775,7 @@ function render(d) {
     ? rec4.map((x) => {
       const inc = x.type === 'income';
       return `<button class="tx ${inc ? 'inc' : ''}" data-go="mov">
-        <span class="dot">${esc(x.category.slice(0, 2).toUpperCase())}</span>
+        ${catIcon(x.category, x.type)}
         <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(x.category)} · ${esc(dayLabel(x.date))}</div></span>
         <span class="amt num">${inc ? '+' : '−'}${eur.format(x.amount)}</span></button>`;
     }).join('') + '<button class="more" data-go="mov">Tutti i movimenti</button>'
@@ -804,7 +806,7 @@ function render(d) {
       const rata = r.installment ? '<span class="pill">A rate</span>' : '';
       const pill = rata + (ok ? '<span class="pill ok">Verificata</span>' : sch ? '<span class="pill">Programmata</span>' : r.overdue ? '<span class="pill late">Non vista</span>' : '<span class="pill">In attesa e-mail</span>');
       const last = r.until ? ` · ultimo addebito ${shortDate(r.until)}` : '';
-      return `<button class="rec" data-id="${r.id}"><span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
+      return `<button class="rec" data-id="${r.id}">${recIcon(r.name)}<span class="mid"><div class="t1">${esc(r.name)}${pill}</div>
         <div class="t2">${esc(ok ? 'pagata il ' + shortDate(r.paid.date) : r.flex && !sch ? 'giorno variabile · in arrivo questo mese' : (sch ? 'prossimo addebito il ' : 'prevista il ') + shortDate(r.due)) + esc(r.flex && ok ? ' · giorno variabile' : '') + esc(last)}</div></span>
         <span class="amt num">${eur.format(ok ? r.paid.amount : r.amount)}</span></button>`;
     }).join('') + (() => {
@@ -823,7 +825,7 @@ function render(d) {
   const sl = d.salaries || [];
   $('#salList').innerHTML = !sl.length
     ? '<div class="empty">Nessuno.<br>Se un mese lo stipendio è diverso dal solito, aggiungilo qui.</div>'
-    : sl.map((x) => `<button class="rec" data-date="${x.date}"><span class="mid"><div class="t1">${esc(new Date(x.date + 'T12:00:00').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }))}<span class="pill">${x.date <= d.today ? 'Arrivato' : 'In arrivo'}</span></div>
+    : sl.map((x) => `<button class="rec" data-date="${x.date}">${catIcon('Entrata', 'income')}<span class="mid"><div class="t1">${esc(new Date(x.date + 'T12:00:00').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }))}<span class="pill">${x.date <= d.today ? 'Arrivato' : 'In arrivo'}</span></div>
         <div class="t2">invece di ${eur.format(x.standard)}</div></span>
         <span class="amt num">${eur.format(x.amount)}</span></button>`).join('');
   const bn = d.bonuses;
@@ -831,7 +833,7 @@ function render(d) {
     ? '<div class="empty">Nessuna mensilità aggiuntiva.<br>Aggiungi tredicesima, quattordicesima o premi: li conto quando arrivano.</div>'
     : bn.map((b) => {
       const ok = b.status === 'arrived';
-      return `<button class="rec" data-id="${b.id}"><span class="mid"><div class="t1">${esc(b.name)}<span class="pill ${ok ? 'ok' : ''}">${ok ? 'Arrivata' : 'In arrivo'}</span></div>
+      return `<button class="rec" data-id="${b.id}">${catIcon('Entrata', 'income')}<span class="mid"><div class="t1">${esc(b.name)}<span class="pill ${ok ? 'ok' : ''}">${ok ? 'Arrivata' : 'In arrivo'}</span></div>
         <div class="t2">${ok ? 'accreditata il ' : 'prevista il '}${esc(new Date(b.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }))}</div></span>
         <span class="amt num">≈ ${eur0.format(b.amount)}</span></button>`;
     }).join('');
@@ -998,6 +1000,39 @@ $('#btnLogout').onclick = () => { try { localStorage.removeItem('appkey'); } cat
 
 // ---- Percorso del saldo, controllo saldo, mesi chiusi ----
 const niceStep = (r) => { const e = 10 ** Math.floor(Math.log10(r)); const f = r / e; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e; };
+// ---- Icone disegnate per categoria (tratto in stile iOS, colore della categoria) ----
+const ICONS = {
+  Spesa: '<circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.2"/>',
+  Casa: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/>',
+  Trasporti: '<rect x="5" y="3" width="14" height="14" rx="3.5"/><path d="M5 10.5h14M8.5 21l1.5-4M15.5 21 14 17"/><circle cx="9" cy="13.8" r=".9"/><circle cx="15" cy="13.8" r=".9"/>',
+  Benzina: '<path d="M4.5 21V5.5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2V21M3 21h12M4.5 10h9"/><path d="M13.5 8h2l3 3v6.5a1.5 1.5 0 0 1-3 0V15h-2"/>',
+  Ristoranti: '<path d="M6 3v7a2 2 0 0 0 4 0V3M8 3v18"/><path d="M17.5 21V3C15.5 4.5 14.5 7 14.5 10v3h3"/>',
+  Svago: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.3" r=".95"/><circle cx="17.6" cy="13.7" r=".95"/>',
+  Salute: '<path d="M12 20.5s-7.5-4.6-7.5-10.4A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.7c0 5.8-7.5 10.4-7.5 10.4z"/><path d="M8 12h2.2l1.1-2 2 4 1.1-2H16"/>',
+  Abbonamenti: '<path d="M17 2.5 20 5.5l-3 3"/><path d="M4 11.5v-2a4 4 0 0 1 4-4h12"/><path d="M7 21.5 4 18.5l3-3"/><path d="M20 12.5v2a4 4 0 0 1-4 4H4"/>',
+  Shopping: '<path d="M5.5 8h13l-1 12a1.5 1.5 0 0 1-1.5 1.4H8A1.5 1.5 0 0 1 6.5 20z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  Capelli: '<circle cx="6" cy="7" r="2.6"/><circle cx="6" cy="17" r="2.6"/><path d="M8.3 8.4 20 18M8.3 15.6 20 6"/>',
+  Contanti: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+  Altro: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3-8.7 8.7z"/><circle cx="8" cy="8" r="1.4"/>',
+  Entrata: '<path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4 16.5V18a2.5 2.5 0 0 0 2.5 2.5h11A2.5 2.5 0 0 0 20 18v-1.5"/>',
+  Ricorrente: '<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M16 3v4M8 3v4M3.5 10h17"/><path d="M9.5 15h5"/>',
+};
+const svgIcon = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.Altro}</svg>`;
+function catIcon(cat, type) {
+  if (type === 'income') return `<span class="ci" style="--c:var(--good)">${svgIcon('Entrata')}</span>`;
+  const k = ICONS[cat] ? cat : 'Altro';
+  return `<span class="ci" style="--c:${catColor(cat)}">${svgIcon(k)}</span>`;
+}
+// Le ricorrenti non hanno categoria: la deduco dal nome (Psi → Salute, Internet → Casa…)
+function recIcon(name) {
+  const n = String(name || '').toLowerCase();
+  const cat = /psi|nutri|medic|dent|farmac|palestr/.test(n) ? 'Salute' : /capell|barb/.test(n) ? 'Capelli'
+    : /internet|fibra|\bsim\b|luce|gas|affitto|condomin|bollett/.test(n) ? 'Casa'
+    : /claude|netflix|spotify|abbon|icloud|disney|dazn|prime|youtube/.test(n) ? 'Abbonamenti'
+    : /scarpe|iphone|ipad|rata|amazon/.test(n) ? 'Shopping' : /auto|treno|bus|assicur/.test(n) ? 'Trasporti' : null;
+  return cat ? catIcon(cat) : `<span class="ci" style="--c:var(--accent)">${svgIcon('Ricorrente')}</span>`;
+}
+
 // ---- grafico a torta delle categorie (si ricalcola a ogni periodo) ----
 const CAT_COLOR = { Spesa: 0, Casa: 1, Trasporti: 2, Benzina: 3, Ristoranti: 4, Svago: 5, Salute: 6, Abbonamenti: 7, Shopping: 8, Capelli: 9, Contanti: 10, Altro: 11 };
 const catColor = (name) => {
@@ -1028,7 +1063,7 @@ function renderPie(cats, spent) {
     : `<text class="ctr"><tspan class="t1" x="100" y="92">Spese del periodo</tspan><tspan class="t2" x="100" y="116">${eur0.format(tot)}</tspan></text>`;
   const legend = cats.map((c) => `
     <div class="it${pieSel === c.category ? ' on' : ''}" data-c="${esc(c.category)}">
-      <span class="dot" style="background:${catColor(c.category)}"></span><span class="nm">${esc(c.category)}</span>
+      ${catIcon(c.category)}<span class="nm">${esc(c.category)}</span>
       <span class="pc">${Math.round(c.total / tot * 100)}%</span><span class="num">${eur.format(c.total)}</span></div>`).join('');
   el.innerHTML = `<div class="pie"><svg viewBox="0 0 200 200" role="img" aria-label="Spese per categoria">
       <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--track)" stroke-width="26"/>${slices}${center}</svg>
