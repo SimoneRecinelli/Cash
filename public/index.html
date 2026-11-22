@@ -754,8 +754,19 @@ function render(d) {
     list.innerHTML = '<div class="empty">Nessun movimento da questo stipendio.<br>Tocca “+ Aggiungi” per iniziare.</div>';
   } else {
     let html = '', last = '';
-    for (const x of d.transactions) {
-      if (x.date !== last) { html += `<div class="day">${esc(dayLabel(x.date))}</div>`; last = x.date; }
+    // Entrate automatiche (stipendio, tredicesima…) insieme ai movimenti, in ordine di data
+    const rows = [...d.transactions.map((x) => ({ x })), ...(d.incomeItems || []).map((i) => ({ auto: i }))]
+      .sort((a, b) => (b.x ? b.x.date : b.auto.date).localeCompare(a.x ? a.x.date : a.auto.date));
+    for (const r of rows) {
+      const date = r.x ? r.x.date : r.auto.date;
+      if (date !== last) { html += `<div class="day">${esc(dayLabel(date))}</div>`; last = date; }
+      if (r.auto) {
+        html += `<div class="tx inc">${catIcon('Entrata', 'income')}
+          <span class="mid"><div class="t1">${esc(r.auto.name)}</div><div class="t2">Entrata · ${r.auto.kind === 'salary' ? 'stipendio, lo conto in automatico' : 'mensilità arrivata, la conto in automatico'}</div></span>
+          <span class="amt num">+${eur.format(r.auto.amount)}</span></div>`;
+        continue;
+      }
+      const x = r.x;
       const inc = x.type === 'income';
       html += `<button class="tx ${inc ? 'inc' : ''}" data-id="${x.id}">
         ${catIcon(x.category, x.type)}
@@ -1225,10 +1236,11 @@ function renderPie(cats, spent) {
   const legend = cats.map((c) => `
     <div class="it${pieSel === c.category ? ' on' : ''}" data-c="${esc(c.category)}">
       ${catIcon(c.category)}<span class="nm">${esc(c.category)}</span>
-      <span class="pc">${Math.round(c.total / tot * 100)}%</span><span class="num">${eur.format(c.total)}</span></div>`).join('');
+      <span class="pc">${Math.round(c.total / tot * 100)}%</span><span class="num">${eur.format(c.total)}</span><span class="chev">${pieSel === c.category ? '▴' : '▾'}</span></div>
+    ${pieSel === c.category ? catExpense(c.category) : ''}`).join('');
   el.innerHTML = `<div class="pie"><svg viewBox="0 0 200 200" role="img" aria-label="Spese per categoria">
       <circle cx="100" cy="100" r="${R}" fill="none" stroke="var(--track)" stroke-width="26"/>${slices}${center}</svg>
-    <div class="pie-sub">Si azzera a ogni nuovo stipendio · tocca una categoria per evidenziarla</div>
+    <div class="pie-sub">Si azzera a ogni nuovo stipendio · tocca una categoria per vedere le spese</div>
     <div class="leg">${legend}</div></div>`;
   el.querySelectorAll('[data-c]').forEach((n) => n.addEventListener('click', () => {
     const c = n.getAttribute('data-c');
@@ -1236,6 +1248,17 @@ function renderPie(cats, spent) {
     renderPie(cats, spent);
   }));
 }
+// Le spese del periodo di una categoria, come tendina sotto la riga della legenda
+function catExpense(cat) {
+  const list = (data ? data.transactions : []).filter((x) => x.type === 'expense' && !x.refund && x.category === cat);
+  return `<div class="catx">${list.map((x) => `<button type="button" class="tx" data-id="${x.id}">
+      <span class="mid"><div class="t1">${esc(x.note || x.category)}</div><div class="t2">${esc(dayLabel(x.date).replace(/^./, (c) => c.toUpperCase()))}${x.eff ? ' · ' + esc(effText(x, true)) : ''}</div></span>
+      <span class="amt num">−${eur.format(x.amount)}</span></button>`).join('') || '<div class="empty">Nessuna spesa.</div>'}</div>`;
+}
+$('#cats').addEventListener('click', (e) => {
+  const b = e.target.closest('.catx .tx'); if (!b) return;
+  const x = data.transactions.find((t) => String(t.id) === b.dataset.id); if (x) openAdd({ edit: x });
+});
 const fmtK = (v) => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(Math.abs(v) % 1000 ? 1 : 0).replace('.', ',') + 'k' : String(Math.round(v)));
 const dd = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
 const monYY = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' }).replace(' ', '\u00a0');

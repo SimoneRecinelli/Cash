@@ -181,3 +181,9 @@ header a { border-radius: 14px; }
 .skiprow { display: flex; gap: 10px; margin: 8px 0 0; }
 .skiprow input { flex: 1; min-width: 0; }
 .skiprow .btn2 { width: auto; margin: 0; padding: 0 18px; }
+
+.leg .it .chev { color: var(--muted); font-size: 12px; width: 14px; text-align: center; flex: none; }
+.catx { margin: 0 0 6px 44px; padding: 2px 0 4px 12px; border-left: 2px solid var(--line); }
+.catx .tx { padding: 8px 4px; border-bottom: 0; }
+.catx .tx .t1 { font-size: 14px; }
+.catx .empty { padding: 8px 0; font-size: 13px; }

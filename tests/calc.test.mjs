@@ -361,3 +361,15 @@ test('una spesa in un sabato senza cena non è una cena', () => {
   assert.equal(computeSummary({ ...input(g), skips: [] }).transactions.find((x) => x.id === 401).eff, 'dinner');
   assert.equal(computeSummary({ ...input(g), skips: ['2026-11-14'] }).transactions.find((x) => x.id === 401).eff, 'free');
 });
+
+test('entrate automatiche del periodo: stipendio e mensilità arrivate', () => {
+  const f = fixture({ today: '2026-12-28' }); // periodo 9/12 → 9/1: la tredicesima (24/12) è arrivata
+  f.s = { ...f.s, balance_date: '2026-12-10' };
+  const r = computeSummary(input(f));
+  const kinds = r.incomeItems.map((i) => [i.kind, i.name, i.date]);
+  assert.deepEqual(kinds, [['salary', 'Stipendio', '2026-12-09'], ['bonus', 'Tredicesima', '2026-12-24']]);
+  approx(r.incomeItems[1].amount, 1560, 'importo tredicesima');
+  const g = computeSummary(input(fixture({ today: '2026-11-12' })));
+  assert.deepEqual(g.incomeItems.map((i) => i.kind), ['salary']);
+  approx(g.incomeItems[0].amount, 1792.26, 'stipendio di novembre (importo indicato per quel mese)');
+});

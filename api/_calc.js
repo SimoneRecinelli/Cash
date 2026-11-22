@@ -274,6 +274,11 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
     monthlyTarget: monthlyTarget(goalRows),
     recurring: rec,
     bonuses: bon,
+    // Entrate automatiche del periodo (non sono movimenti registrati): stipendio e mensilità arrivate
+    incomeItems: [
+      { kind: 'salary', name: 'Stipendio', date: p.start, amount: salaryOf(p.start) },
+      ...bon.filter((b) => b.status === 'arrived').map((b) => ({ kind: 'bonus', name: b.name, date: b.date, amount: b.amount })),
+    ],
     categories,
     transactions: allTx.map((x) => ({ ...x, dn: weekly > 0 ? dinnerState(x) : 'no', eff: effectOf(x), rec: recOf.get(x.id) || null })),
     dinnerAsk,
