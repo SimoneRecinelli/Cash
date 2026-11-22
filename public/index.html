@@ -520,12 +520,12 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
 
 <!-- Nuova mensilità aggiuntiva -->
 <section class="sheet" id="goalAddSheet" hidden>
-  <h3>Nuovo obiettivo</h3>
+  <h3 id="goalTitle">Nuovo obiettivo</h3>
   <div class="row2">
     <div><label for="gAmount">Voglio arrivare a (€)</label><input id="gAmount" inputmode="decimal" placeholder="es. 20000"></div>
     <div><label for="gDate">Entro il</label><input id="gDate" type="date"></div>
   </div>
-  <div class="hint">Se hai più obiettivi, conta quello più difficile da raggiungere.</div>
+  <div class="hint" id="goalHint">Se hai più obiettivi, conta quello più difficile da raggiungere.</div>
   <div class="err" id="goalErr"></div>
   <button class="primary" id="goalSave">Aggiungi</button>
   <button class="link" data-close>Annulla</button>
@@ -800,7 +800,7 @@ function render(d) {
         <div class="gbody">
           <div class="bar"><i style="width:${gp}%"></i></div>
           <div class="g2">Sul conto dovresti avere ${m(d.balance)}. ${txt}</div>
-          <div class="g3"><a class="goalSync">Aggiorna saldo</a><a class="goalDel" style="color:var(--bad)">Elimina</a></div>
+          <div class="g3"><a class="goalEdit">Cambia cifra</a><a class="goalSync">Aggiorna saldo</a><a class="goalDel" style="color:var(--bad)">Elimina</a></div>
         </div>
       </details>`;
     }).join('');
@@ -1116,8 +1116,18 @@ function openSettings() {
   $('#setErr').textContent = '';
   openSheet('setSheet');
 }
+let goalEditId = null;
 $('#goalList').addEventListener('click', async (e) => {
   if (e.target.closest('.goalSync')) return openSettings();
+  const ed = e.target.closest('.goalEdit');
+  if (ed) {
+    const g = data.goals.find((x) => String(x.id) === ed.closest('.goal').dataset.id); if (!g) return;
+    goalEditId = g.id;
+    $('#goalTitle').textContent = 'Cambia obiettivo'; $('#goalSave').textContent = 'Salva';
+    $('#gAmount').value = String(g.amount).replace('.', ','); $('#gDate').value = g.date; $('#goalErr').textContent = '';
+    $('#goalHint').textContent = 'Cambiando la cifra o la data si ricalcolano subito i soldi liberi e la lista desideri.';
+    return openSheet('goalAddSheet');
+  }
   const del = e.target.closest('.goalDel'); if (!del) return;
   const box = del.closest('.goal'); const g = data.goals.find((x) => String(x.id) === box.dataset.id);
   if (!g || !confirm(`Eliminare l’obiettivo da ${eur0.format(g.amount)}?`)) return;
@@ -1125,6 +1135,8 @@ $('#goalList').addEventListener('click', async (e) => {
   catch (err) { alert(err.message); }
 });
 $('#btnAddGoal').onclick = () => {
+  goalEditId = null; $('#goalTitle').textContent = 'Nuovo obiettivo'; $('#goalSave').textContent = 'Aggiungi';
+  $('#goalHint').textContent = 'Se hai più obiettivi, conta quello più difficile da raggiungere.';
   $('#gAmount').value = ''; $('#gDate').value = ''; $('#goalErr').textContent = '';
   openSheet('goalAddSheet');
 };
@@ -1132,8 +1144,9 @@ $('#goalSave').onclick = async () => {
   const amount = parseNum($('#gAmount').value), date = $('#gDate').value;
   if (!(amount > 0) || !date) { $('#goalErr').textContent = 'Inserisci cifra e data'; return; }
   try {
-    await api('goals', { method: 'POST', body: JSON.stringify({ amount, date }) });
-    closeSheets(); toast('Obiettivo aggiunto'); load();
+    if (goalEditId) await api('goals?id=' + goalEditId, { method: 'PUT', body: JSON.stringify({ amount, date }) });
+    else await api('goals', { method: 'POST', body: JSON.stringify({ amount, date }) });
+    closeSheets(); toast(goalEditId ? 'Obiettivo aggiornato' : 'Obiettivo aggiunto'); goalEditId = null; load();
   } catch (e) { $('#goalErr').textContent = e.message; }
 };
 $('#btnSettings').onclick = openSettings;
