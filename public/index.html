@@ -339,6 +339,7 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <section class="tab" id="tab-wish">
     <div class="sec"><h2>Lista dei desideri</h2><button class="add-mini" id="btnAddWish" aria-label="Aggiungi desiderio">+</button></div>
     <div class="hint" id="wishSummary" style="margin:-4px 4px 8px"></div>
+    <div class="card wgrid" id="wishGrid" hidden></div>
     <div class="card" id="wishList"></div>
     <details id="wishBoughtBox" hidden><summary id="wishBoughtSum">Già comprati</summary><div class="card" id="wishBought"></div></details>
   </section>
@@ -1370,11 +1371,35 @@ function wishGroups(open) {
     parts: [{ price: x.price, n: x.installments }, ...(kids[x.id] || []).map((c) => ({ price: c.price, n: c.installments }))] }));
   return { tops, kids };
 }
+// Tabella mese per mese: quando puoi permetterti ogni articolo (uno alla volta) e quanto ti avanza
+function renderWishGrid(open) {
+  const el = $('#wishGrid');
+  if (!data || !open.length || !(data.goals || []).length) { el.hidden = true; return; }
+  const { tops } = wishGroups(open);
+  const sched = SimCore.schedule(data, tops);
+  const g = SimCore.monthGrid(data, sched);
+  const cap = (t) => t.replace(/^./, (c) => c.toUpperCase());
+  const mon = (ym) => cap(new Date(ym + '-15T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: 'numeric' }).replace('.', ''));
+  const plan = Object.fromEntries(sched.map((x) => [x.id, x.plan && x.plan.start]));
+  const head = `<tr><th></th>${sched.map((x) => `<th>${esc(x.name)}</th>`).join('')}</tr>`;
+  const body = g.rows.map((r) => `<tr><th class="m">${esc(mon(r.ym))}</th>${sched.map((x) => {
+    const c = r.cells[x.id];
+    if (!c.ok) return '<td class="no">—</td>';
+    const when = c.start === data.today ? 'da oggi' : 'dal ' + parseInt(c.start.slice(8), 10);
+    const isPlan = plan[x.id] && plan[x.id].slice(0, 7) === r.ym;
+    return `<td class="ok${isPlan ? ' plan' : ''}"><b>${when}</b><small>${c.slack === null ? 'libero' : eur0.format(c.slack)}</small></td>`;
+  }).join('')}</tr>`).join('');
+  el.innerHTML = `<div class="ct">Mese per mese</div>
+    <div class="wgs"><table class="wg"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+    <div class="hint" style="margin:8px 2px 0">Per ogni articolo, preso da solo: in grande il giorno da cui puoi iniziare a pagarlo senza mancare un obiettivo, sotto quanto ti avanza sull’obiettivo più vicino toccato dalle rate. “—” = in quel mese non regge. Il bordo è il momento scelto dal calendario qui sotto, che tiene conto delle priorità.</div>`;
+  el.hidden = false;
+}
 function renderWish() {
   const open = wishItems.filter((x) => !x.bought_at), done = wishItems.filter((x) => x.bought_at);
   if (!open.length) {
     $('#wishList').innerHTML = '<div class="empty">Nessun desiderio.<br>Aggiungi quello che vuoi comprare, con il link e una priorità: ti dico quando puoi permetterti ognuno, uno dopo l’altro.</div>';
     $('#wishSummary').textContent = '';
+    $('#wishGrid').hidden = true;
   } else {
     const { tops, kids } = wishGroups(open);
     const sched = data ? SimCore.schedule(data, tops) : tops.map((x) => ({ ...x, plan: null }));
@@ -1395,6 +1420,7 @@ function renderWish() {
     const last = sched.filter((x) => x.plan).map((x) => x.plan.last).sort().pop();
     $('#wishSummary').textContent = `${tops.length} ${tops.length === 1 ? 'acquisto' : 'acquisti'} · ${eur0.format(tot)} in tutto` + (last && data ? ` · comprandoli in ordine di priorità, l’ultimo si chiude il ${fullD(last)}` : '');
   }
+  renderWishGrid(open);
   $('#wishBoughtBox').hidden = !done.length;
   $('#wishBoughtSum').textContent = `Già comprati (${done.length})`;
   $('#wishBought').innerHTML = done.map((x) => `<div class="wish" data-id="${x.id}"><button class="wbody" data-undo="1"><span><div class="wt">${esc(x.name)}</div><div class="ws">comprato il ${esc(fullD(x.bought_at))} · tocca per rimetterlo nei desideri</div></span><b class="num">${eur0.format(x.price)}</b></button></div>`).join('');

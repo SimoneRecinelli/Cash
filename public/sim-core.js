@@ -112,5 +112,42 @@
     return order.map((it) => ({ ...it, plan: out.get(it.id) }));
   }
 
-  g.SimCore = { addMonthsStr, addDaysISO, plan, analyse, schedule };
+  // Mese per mese: per ogni articolo (da solo) e ogni mese, se si può iniziare a comprarlo in quel mese e quanto avanza.
+  // Per ogni mese provo le stesse date del calendario (oggi, stipendi, giorno dopo la scadenza di un obiettivo): vale la prima che regge. Come in schedule(): regge se nessun obiettivo scende sotto zero e le rate di questo periodo stanno nei soldi liberi.
+  function monthGrid(data, items) {
+    const goals = data.goals.filter((x) => !x.expired);
+    const margin = (data.settings && data.settings.margin) || 0;
+    const periodEnd = data.period.end;
+    const rem = Math.max(0, data.totals.remaining);
+    const lastGoalDate = goals.length ? goals[goals.length - 1].date : periodEnd;
+    const paydays = [];
+    for (let k = 0; k < 24; k++) { const d = addMonthsStr(periodEnd, k); if (d > addDaysISO(lastGoalDate, 1)) break; paydays.push(d); }
+    const marks = [data.today, periodEnd, ...paydays, ...goals.map((x) => addDaysISO(x.date, 1))];
+    const months = [];
+    for (let m = data.today.slice(0, 7); m <= addDaysISO(lastGoalDate, 1).slice(0, 7) && months.length < 14; m = addMonthsStr(m + '-01', 1).slice(0, 7)) months.push(m);
+    const rows = months.map((ym) => {
+      const cands = [...new Set(marks.filter((d) => d.slice(0, 7) === ym))].sort();
+      const cells = {};
+      for (const it of items) {
+        const parts = (it.parts && it.parts.length ? it.parts : [{ price: it.price, n: it.installments }])
+          .map((x) => ({ n: Math.max(1, x.n || 1), q: x.price / Math.max(1, x.n || 1) }));
+        cells[it.id] = { ok: false };
+        for (const s of cands) {
+          const ds = parts.map((x) => Array.from({ length: x.n }, (_, k) => addMonthsStr(s, k)));
+          const costFor = (test) => parts.reduce((t, x, i) => t + x.q * ds[i].filter(test).length, 0);
+          const worst = goals.length ? Math.min(...goals.map((x) => x.spendable - margin - costFor((d) => d <= x.date))) : Infinity;
+          if (worst >= 0 && costFor((d) => d < periodEnd) <= rem) {
+            // spazio che resta sugli obiettivi toccati dalle rate (quelli che le rate non raggiungono non cambiano)
+            const hit = goals.map((x) => ({ x, c: costFor((d) => d <= x.date) })).filter((o) => o.c > 0).map((o) => o.x.spendable - margin - o.c);
+            cells[it.id] = { ok: true, start: s, slack: hit.length ? Math.min(...hit) : null };
+            break;
+          }
+        }
+      }
+      return { ym, cells };
+    });
+    return { items: items.map((it) => ({ id: it.id, name: it.name })), rows };
+  }
+
+  g.SimCore = { addMonthsStr, addDaysISO, plan, analyse, schedule, monthGrid };
 })(typeof window !== 'undefined' ? window : globalThis);

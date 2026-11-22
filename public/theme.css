@@ -187,3 +187,17 @@ header a { border-radius: 14px; }
 .catx .tx { padding: 8px 4px; border-bottom: 0; }
 .catx .tx .t1 { font-size: 14px; }
 .catx .empty { padding: 8px 0; font-size: 13px; }
+
+/* Tabella mese per mese dei desideri */
+.wgrid { padding: 14px 14px 12px; }
+.wgrid .ct { font-weight: 650; font-size: 15px; margin: 0 2px 8px; }
+.wgs { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.wg { border-collapse: separate; border-spacing: 4px; width: 100%; font-size: 13px; }
+.wg th { font-weight: 600; color: var(--muted); font-size: 12px; text-align: center; padding: 2px 4px 4px; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg th.m { text-align: left; color: var(--ink); font-size: 13px; white-space: nowrap; padding-right: 8px; max-width: none; overflow: visible; }
+.wg td { text-align: center; padding: 7px 4px; border-radius: 10px; min-width: 72px; }
+.wg td.no { color: var(--muted); background: var(--track); }
+.wg td.ok { background: var(--accent-soft); }
+.wg td.ok b { display: block; font-size: 13px; }
+.wg td.ok small { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+.wg td.plan { box-shadow: inset 0 0 0 2px var(--accent); }

@@ -132,3 +132,29 @@ test('acquisto con parti a rate diverse: iPad in 3 rate + accessori pagati subit
   const spread = byId(big([{ price: total, n: 3 }]), 1);
   assert.ok(lump.start >= spread.start, 'tutto subito non parte prima della versione a rate');
 });
+
+// ---- Mese per mese ----
+const { monthGrid } = globalThis.SimCore;
+
+test('mese per mese: l’iPad non regge nei mesi stretti, regge dal mese in cui parte il calendario e poi sempre', () => {
+  const d = data({ today: '2026-11-12' });
+  const items = [item(1, 800, 1, 3)];
+  const g = monthGrid(d, items);
+  const oks = g.rows.map((r) => r.cells[1].ok);
+  const firstOk = oks.indexOf(true);
+  assert.ok(firstOk > 0, 'non regge subito');
+  assert.ok(oks.slice(firstOk).every(Boolean), 'dal primo mese che regge, regge anche nei successivi');
+  // coerenza con il calendario: il primo mese che regge è quello in cui il calendario mette l’acquisto
+  const p = byId(schedule(d, items), 1);
+  assert.equal(g.rows[firstOk].ym, p.start.slice(0, 7));
+  assert.equal(g.rows[firstOk].cells[1].start, p.start);
+});
+
+test('mese per mese: due articoli sono indipendenti; il più piccolo regge prima', () => {
+  const d = data({ today: '2026-11-12' });
+  const g = monthGrid(d, [item(1, 800, 1, 3), item(2, 30, 2, 1)]);
+  const first = (id) => g.rows.findIndex((r) => r.cells[id].ok);
+  assert.ok(first(2) <= first(1));
+  assert.equal(g.items.length, 2);
+  assert.equal(g.rows[0].ym, '2026-11');
+});
