@@ -373,3 +373,11 @@ test('entrate automatiche del periodo: stipendio e mensilità arrivate', () => {
   assert.deepEqual(g.incomeItems.map((i) => i.kind), ['salary']);
   approx(g.incomeItems[0].amount, 1792.26, 'stipendio di novembre (importo indicato per quel mese)');
 });
+
+test('ricorrente con più parole alternative ("paypal|backmarket") si riconosce da una qualunque', () => {
+  const f = withTx(fixture({ today: '2026-11-10' }), [{ type: 'expense', amount: 135.5, category: 'Shopping', note: 'BACKMARKET', date: '2026-11-10' }]);
+  f.recurring = [...f.recurring, { id: 9, name: 'iPad rate', amount: 135.62, day: 10, match: 'paypal|backmarket', flex: false, installment: true, starts: '2026-11-01', until: '2027-04-30' }];
+  const r = computeSummary(input(f));
+  const rec = r.recurring.find((x) => x.id === 9);
+  assert.equal(rec.status, 'verified');
+});

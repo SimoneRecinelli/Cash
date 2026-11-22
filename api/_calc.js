@@ -87,12 +87,14 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
       rec.push({ ...item, due: nextOccurrence(r.day, s0), status: 'scheduled', overdue: false, paid: null });
       continue;
     }
-    const key = (r.match || r.name).toLowerCase();
+    // Più parole alternative separate da "|" (es. "paypal|backmarket"): basta che compaia una
+    const keys = (r.match || r.name).toLowerCase().split('|').map((k) => k.trim()).filter(Boolean);
     const tol = Math.max(5, r.amount * 0.3);
     let best = null;
     for (const x of transactions) {
       if (x.type !== 'expense' || used.has(x.id)) continue;
-      if (!`${x.note} ${x.category}`.toLowerCase().includes(key)) continue;
+      const hay = `${x.note} ${x.category}`.toLowerCase();
+      if (!keys.some((k) => hay.includes(k))) continue;
       const diff = Math.abs(x.amount - r.amount);
       if (diff <= tol && (!best || diff < best.diff)) best = { x, diff };
     }

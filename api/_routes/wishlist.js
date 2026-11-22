@@ -36,6 +36,17 @@ function parse(b) {
   return { v: { name, price: Math.round(price * 100) / 100, priority, installments, note, url: url.v, parent_id: pid } };
 }
 
+// Il "principale" a cui si accorpa deve esistere e non essere a sua volta un accessorio; e chi ha accessori non può diventarlo
+async function parentOk(sql, parentId, selfId) {
+  const [p] = await sql`SELECT parent_id FROM wishlist WHERE id = ${parentId}`;
+  if (!p || p.parent_id !== null) return false;
+  if (selfId !== null) {
+    const kids = await sql`SELECT id FROM wishlist WHERE parent_id = ${selfId} LIMIT 1`;
+    if (kids.length) return false;
+  }
+  return true;
+}
+
 export default handler(async (req, res) => {
   const sql = db();
 
@@ -52,6 +63,7 @@ export default handler(async (req, res) => {
   if (req.method === 'POST') {
     const { v, error } = parse(req.body);
     if (error) return res.status(400).json({ error });
+    if (v.parent_id !== null && !(await parentOk(sql, v.parent_id, null))) return res.status(400).json({ error: 'Si può accorpare solo a un desiderio principale che non sia a sua volta accorpato' });
     const [row] = await sql`
       INSERT INTO wishlist (name, price, url, priority, installments, note, parent_id)
       VALUES (${v.name}, ${v.price}, ${v.url}, ${v.priority}, ${v.installments}, ${v.note}, ${v.parent_id}) RETURNING id`;
@@ -71,6 +83,7 @@ export default handler(async (req, res) => {
     const { v, error } = parse(b);
     if (error) return res.status(400).json({ error });
     if (v.parent_id === id) return res.status(400).json({ error: 'Non puoi accorpare un desiderio a se stesso' });
+    if (v.parent_id !== null && !(await parentOk(sql, v.parent_id, id))) return res.status(400).json({ error: 'Si può accorpare solo a un desiderio principale che non sia a sua volta accorpato' });
     const rows = await sql`
       UPDATE wishlist SET name = ${v.name}, price = ${v.price}, url = ${v.url}, priority = ${v.priority},
              installments = ${v.installments}, note = ${v.note}, parent_id = ${v.parent_id}
