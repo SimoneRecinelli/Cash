@@ -547,8 +547,8 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <h3>Mensilità aggiuntiva</h3>
   <label for="bName">Nome</label>
   <input id="bName" maxlength="60" placeholder="es. Tredicesima" autocomplete="off">
-  <label for="bAmount">Importo netto previsto (€)</label>
-  <input id="bAmount" inputmode="decimal" placeholder="es. 1560">
+  <label for="bonAmount">Importo netto previsto (€)</label>
+  <input id="bonAmount" inputmode="decimal" placeholder="es. 1560">
   <div class="row2">
     <div><label for="bMonth">Mese</label>
       <select id="bMonth"></select></div>
@@ -636,48 +636,6 @@ function toast(msg, act) {
   setTimeout(() => t.remove(), act ? 6000 : msg.length > 40 ? 5000 : 1800);
 }
 
-// ---- Frase del giorno: come sei messo, detto in parole ----
-function renderSay(d) {
-  const el = $('#homeSay');
-  const t = d.totals, p = d.period;
-  if (!t || !p) { el.hidden = true; return; }
-  const free = t.remaining, hl = t.habitLeft || 0;
-  const dl = Math.max(p.daysLeft, 1);
-  const end = new Date(p.end + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
-  const goal = d.goal && !d.goal.expired;
-  const cene = hl > 0 ? `, più ${eur0.format(hl)} per le cene del sabato` : '';
-  const perDay = free / dl;
-  const day = perDay >= 1 ? `circa ${eur0.format(perDay)} al giorno` : 'meno di 1 € al giorno';
-  let main;
-  if (free < 0) {
-    main = goal
-      ? `Sei ${eur0.format(-free)} oltre il piano. Non è un dramma: se non recuperi da qui al ${end}, li tolgo dai prossimi stipendi per restare sull’obiettivo.`
-      : `Sei ${eur0.format(-free)} oltre il budget di questo stipendio.`;
-  } else if (t.budget > 0 && free / t.budget < 0.15) {
-    main = `Vai piano: fino allo stipendio del ${end} ti restano ${eur0.format(free)} liberi, ${day}${cene}.`;
-  } else {
-    main = `${goal ? 'Sei in linea. ' : ''}Fino allo stipendio del ${end} puoi spendere ancora ${eur0.format(free)} liberi, ${day}${cene}.`;
-  }
-  const extra = [];
-  const ask = (d.dinnerAsk || []).length, ib = (d.inbox || []).length;
-  if (ask) extra.push(ask === 1 ? 'C’è una spesa che potrebbe essere una cena: dimmelo qui sotto.' : `Ci sono ${ask} spese che potrebbero essere cene: dimmelo qui sotto.`);
-  if (ib) extra.push(ib === 1 ? 'C’è un messaggio della banca che non ho capito: guardalo qui sotto.' : `Ci sono ${ib} messaggi della banca che non ho capito: guardali qui sotto.`);
-  const todayIso = d.today;
-  const wk = d.settings && d.settings.habit_weekly;
-  if (wk > 0 && new Date(todayIso + 'T12:00:00').getDay() === 6) extra.push(`Oggi è sabato: per la cena hai ${eur0.format(wk)} già messi da parte.`);
-  const soon = (d.recurring || []).filter((r) => r.status === 'pending' && !r.flex && r.due >= todayIso && diffDaysLocal(todayIso, r.due) <= 3)
-    .sort((a, b) => a.due.localeCompare(b.due))[0];
-  if (soon) {
-    const n = diffDaysLocal(todayIso, soon.due);
-    extra.push(`${n === 0 ? 'Oggi' : n === 1 ? 'Domani' : `Fra ${n} giorni`} parte “${soon.name}” (${eur.format(soon.amount)}): è già messa in conto, non devi toglierla tu.`);
-  }
-  const last = (d.allTransactions || d.transactions || [])[0];
-  if (last && diffDaysLocal(last.date, todayIso) <= 1 && last.eff && last.eff !== 'ask') {
-    extra.push(`Ultimo movimento: ${last.note || last.category}, ${eur.format(last.amount)}, ${effText(last)}.`);
-  }
-  el.innerHTML = `<p class="say1">${esc(main)}</p>${extra.slice(0, 2).map((x) => `<p class="say2">${esc(x)}</p>`).join('')}`;
-  el.hidden = false;
-}
 const diffDaysLocal = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000);
 
 // ---- Cosa ha fatto un movimento, in parole ----
@@ -1610,12 +1568,12 @@ $('#salList').addEventListener('click', async (e) => {
   catch (err) { alert(err.message); }
 });
 $('#btnAddBon').onclick = () => {
-  ['#bName', '#bAmount', '#bDay'].forEach((i) => ($(i).value = ''));
+  ['#bName', '#bonAmount', '#bDay'].forEach((i) => ($(i).value = ''));
   $('#bMonth').value = '12'; $('#bonErr').textContent = '';
   openSheet('bonAddSheet');
 };
 $('#bonSave').onclick = async () => {
-  const amount = parseNum($('#bAmount').value), day = parseInt($('#bDay').value, 10), month = parseInt($('#bMonth').value, 10);
+  const amount = parseNum($('#bonAmount').value), day = parseInt($('#bDay').value, 10), month = parseInt($('#bMonth').value, 10);
   if (!$('#bName').value.trim() || !(amount > 0) || !(day >= 1 && day <= 31)) { $('#bonErr').textContent = 'Inserisci nome, importo e giorno (1-31)'; return; }
   try {
     await api('bonuses', { method: 'POST', body: JSON.stringify({ name: $('#bName').value, amount, month, day }) });
