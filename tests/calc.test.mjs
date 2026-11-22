@@ -338,3 +338,26 @@ test('ogni movimento dice cosa ha fatto al budget (per spiegarlo nell’app)', (
   assert.deepEqual(eff, { 301: 'dinner', 302: 'ask', 303: 'free', 304: 'rec', 305: 'refund', 306: 'income' });
   assert.equal(r.transactions.find((x) => x.id === 304).rec, 'Internet');
 });
+
+// ---- Sabati senza cena ----
+test('sabati senza cena: non hanno quota, né nel periodo né fino alla data dell’obiettivo', () => {
+  const mk = (skips) => {
+    const f = fixture({ today: '2026-11-16' }); // sabati 14 (passato), 21, 28/11 e 5/12
+    f.s = { ...f.s, habit_weekly: 50, habit_left: null, habit_left_for: null, margin: 0 };
+    return computeSummary({ ...input(f), skips });
+  };
+  const base = mk([]), con = mk(['2026-11-28']), dic = mk(['2026-12-26']);
+  approx(base.totals.habitLeft - con.totals.habitLeft, 50, 'il sabato saltato libera 50 € di cene del periodo');
+  approx(goalOf(dic, '2026-12-31').habit, goalOf(base, '2026-12-31').habit - 50, 'il 26/12 non conta fino al 31/12');
+  approx(goalOf(dic, '2027-01-31').habit, goalOf(base, '2027-01-31').habit - 50, 'e nemmeno fino al 31/1');
+  approx(goalOf(dic, '2026-12-31').spendable - goalOf(base, '2026-12-31').spendable, 50, 'più spazio per gli obiettivi');
+  assert.deepEqual(dic.settings.dinnerSkips, ['2026-12-26']);
+});
+
+test('una spesa in un sabato senza cena non è una cena', () => {
+  const f = fixture({ today: '2026-11-16' });
+  f.s = { ...f.s, habit_weekly: 50, habit_left: null, habit_left_for: null, margin: 0 };
+  const g = withTx(f, [{ id: 401, amount: 20, category: 'Altro', date: '2026-11-14' }]);
+  assert.equal(computeSummary({ ...input(g), skips: [] }).transactions.find((x) => x.id === 401).eff, 'dinner');
+  assert.equal(computeSummary({ ...input(g), skips: ['2026-11-14'] }).transactions.find((x) => x.id === 401).eff, 'free');
+});

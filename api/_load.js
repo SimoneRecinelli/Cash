@@ -17,7 +17,7 @@ export async function loadSummary() {
   const today = todayStr();
   const p = period(today, s.salary_day);
 
-  const [transactions, recurring, bonuses, delta, goalRows, overrides, history] = await Promise.all([
+  const [transactions, recurring, bonuses, delta, goalRows, overrides, history, skipRows] = await Promise.all([
     sql`SELECT id, type, amount::float8 AS amount, category, note,
                to_char(date, 'YYYY-MM-DD') AS date,
                (created_at > (SELECT balance_set_at FROM settings WHERE id = 1)) AS fresh, refund, dinner
@@ -36,9 +36,10 @@ export async function loadSummary() {
     sql`SELECT to_char(date, 'YYYY-MM-DD') AS date, amount::float8 AS amount FROM salary_overrides ORDER BY date`,
     sql`SELECT to_char(date, 'YYYY-MM-DD') AS date, balance::float8 AS balance FROM balance_history
         WHERE date >= (${p.start}::date - interval '200 days') ORDER BY date`,
+    sql`SELECT to_char(date, 'YYYY-MM-DD') AS date FROM dinner_skips WHERE date >= ${p.start}::date ORDER BY date`,
   ]);
 
-  const result = computeSummary({ s, today, transactions, recurring, bonuses, delta, goalRows, overrides, history });
+  const result = computeSummary({ s, today, transactions, recurring, bonuses, delta, goalRows, overrides, history, skips: skipRows.map((r) => r.date) });
   return { sql, s, today, result, history };
 }
 

@@ -141,6 +141,7 @@ function init() {
         fails int NOT NULL DEFAULT 0,
         window_start timestamptz NOT NULL DEFAULT now()
       )`);
+      q.push(sql`CREATE TABLE IF NOT EXISTS dinner_skips (date date PRIMARY KEY)`);
       await sql.transaction(q);
     })().catch((e) => {
       ready = null;
@@ -276,6 +277,15 @@ export function handler(fn, { auth = 'session' } = {}) {
 
 export function todayStr() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
+// Data da dare a un movimento che arriva dalla banca: prima delle 6 del mattino è ancora la "serata" del giorno prima
+// (es. la cena di sabato addebitata dopo mezzanotte resta di sabato).
+export function ingestDateStr(now = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(now).map((x) => [x.type, x.value]));
+  const d = `${p.year}-${p.month}-${p.day}`;
+  return Number(p.hour) < 6 ? addDaysStr(d, -1) : d;
 }
 
 const pad = (n) => String(n).padStart(2, '0');

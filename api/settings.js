@@ -57,6 +57,12 @@ export default handler(async (req, res) => {
       await sql`UPDATE settings SET habit_left = ${left === null ? null : Math.round(left * 100) / 100},
         habit_left_for = ${left === null ? null : start}::date WHERE id = 1`;
     }
+    if (Array.isArray(b.dinner_skips)) {
+      const ok = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(d + 'T00:00:00Z').getUTCDay() === 6 && !Number.isNaN(Date.parse(d));
+      const list = [...new Set(b.dinner_skips)].filter(ok).slice(0, 100);
+      await sql`DELETE FROM dinner_skips`;
+      for (const d of list) await sql`INSERT INTO dinner_skips (date) VALUES (${d}::date) ON CONFLICT DO NOTHING`;
+    }
     if (hasBalance) {
       await sql`UPDATE settings SET balance_ref = ${Math.round(balance * 100) / 100}, balance_set_at = now() WHERE id = 1`;
     }

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { handler, db, todayStr } from './_lib.js';
+import { handler, db, ingestDateStr } from './_lib.js';
 import { parseBankMessage, applyRules } from './_parse.js';
 
 // Riceve il testo di un SMS bancario (da un'automazione di Comandi su iPhone)
@@ -34,7 +34,7 @@ export default handler(async (req, res) => {
 
   const rows = await sql`
     INSERT INTO transactions (type, amount, category, note, date, raw_hash)
-    VALUES (${p.type}, ${p.amount}, ${p.category}, ${p.merchant}, ${todayStr()}::date, ${hash})
+    VALUES (${p.type}, ${p.amount}, ${p.category}, ${p.merchant}, ${ingestDateStr()}::date, ${hash})
     ON CONFLICT (raw_hash) DO NOTHING
     RETURNING id`;
 

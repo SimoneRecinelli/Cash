@@ -459,6 +459,10 @@ details.how .hb .r.tot { font-weight: 700; border-top: 2px solid var(--line); }
   <label for="sHabit">Quanto spendi per la cena del sabato (€)</label>
   <input id="sHabit" inputmode="decimal" placeholder="es. 50">
   <div class="hint">Metto da parte questa cifra per ogni sabato fino al prossimo stipendio (4 o 5 sabati). Le spese del sabato e quelle che segni come “Cena del sabato” la usano, senza toccare i soldi liberi.</div>
+  <label>Sabati senza cena</label>
+  <div class="chips" id="sSkips"></div>
+  <div class="skiprow"><input id="sSkipDate" type="date" aria-label="Sabato senza cena"><button type="button" class="btn2" id="sSkipAdd">Aggiungi</button></div>
+  <div class="hint">I sabati in cui non vai a cena: non li metto da parte nel budget. Tocca una data per toglierla.</div>
   <label for="sMargin">Riserva da non toccare mai (€)</label>
   <input id="sMargin" inputmode="decimal" placeholder="es. 200">
   <div class="hint">Soldi che faccio finta di non avere, per sicurezza. Lascia 0 se non ti serve.</div>
@@ -1095,6 +1099,8 @@ function openSettings() {
   $('#sHabit').value = s.habit_weekly ? String(s.habit_weekly).replace('.', ',') : '';
   $('#sBal').value = data && data.balance != null ? data.balance.toFixed(2).replace('.', ',') : '';
   balPrefill = $('#sBal').value;
+  skipDraft = [...(s.dinnerSkips || [])].filter((d) => d >= (data ? data.today : '')).sort();
+  $('#sSkipDate').value = ''; renderSkips();
   $('#setErr').textContent = '';
   openSheet('setSheet');
 }
@@ -1119,13 +1125,32 @@ $('#goalSave').onclick = async () => {
   } catch (e) { $('#goalErr').textContent = e.message; }
 };
 $('#btnSettings').onclick = openSettings;
+// Sabati senza cena: lista modificata in Impostazioni, salvata con il tasto Salva
+let skipDraft = [];
+function renderSkips() {
+  $('#sSkips').innerHTML = skipDraft.length
+    ? skipDraft.map((d) => `<button type="button" class="chip on" data-d="${d}">${esc(new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }))} ✕</button>`).join('')
+    : '<span class="hint" style="margin:0">Nessuno: conto tutti i sabati.</span>';
+}
+$('#sSkips').addEventListener('click', (e) => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  skipDraft = skipDraft.filter((d) => d !== c.dataset.d); renderSkips();
+});
+$('#sSkipAdd').onclick = () => {
+  const d = $('#sSkipDate').value;
+  if (!d) return;
+  if (new Date(d + 'T12:00:00').getDay() !== 6) { $('#setErr').textContent = 'Quel giorno non è un sabato'; return; }
+  $('#setErr').textContent = '';
+  if (!skipDraft.includes(d)) skipDraft = [...skipDraft, d].sort();
+  $('#sSkipDate').value = ''; renderSkips();
+};
 $('#setSave').onclick = async () => {
   const salary = parseNum($('#sSalary').value), day = parseInt($('#sDay').value, 10);
   const balStr = $('#sBal').value.trim(), habitStr = $('#sHabit').value.trim(), marginStr = $('#sMargin').value.trim(), leftStr = $('#sLeft').value.trim();
   if (!(salary >= 0) || !(day >= 1 && day <= 31) || (balStr && isNaN(parseNum(balStr))) || (habitStr && !(parseNum(habitStr) >= 0)) || (marginStr && !(parseNum(marginStr) >= 0)) || (leftStr && !(parseNum(leftStr) >= 0))) {
     $('#setErr').textContent = 'Controlla i valori inseriti'; return;
   }
-  const body = { salary, salary_day: day, habit_weekly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0, habit_left: leftStr ? parseNum(leftStr) : '' };
+  const body = { salary, salary_day: day, habit_weekly: habitStr ? parseNum(habitStr) : 0, safety_margin: marginStr ? parseNum(marginStr) : 0, habit_left: leftStr ? parseNum(leftStr) : '', dinner_skips: skipDraft };
   if (balStr && balStr !== balPrefill) body.balance = parseNum(balStr);
   try {
     await api('settings', { method: 'PUT', body: JSON.stringify(body) });

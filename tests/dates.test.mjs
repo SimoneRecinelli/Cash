@@ -37,3 +37,13 @@ test('prossima occorrenza e scadenza nel periodo', () => {
   assert.equal(dueInPeriod(4, '2026-11-09', '2026-12-09'), '2026-12-04');
   assert.equal(diffDays('2026-11-05', '2026-12-31'), 56);
 });
+
+test('ingestDateStr: prima delle 6 è ancora il giorno prima (cena di sabato addebitata dopo mezzanotte)', async () => {
+  const { ingestDateStr } = await import('../api/_lib.js');
+  assert.equal(ingestDateStr(new Date('2026-11-21T23:07:00Z')), '2026-11-21'); // 00:07 a Roma di domenica 22
+  assert.equal(ingestDateStr(new Date('2026-11-22T04:59:00Z')), '2026-11-21'); // 05:59
+  assert.equal(ingestDateStr(new Date('2026-11-22T05:00:00Z')), '2026-11-22'); // 06:00
+  assert.equal(ingestDateStr(new Date('2026-07-10T03:30:00Z')), '2026-07-09'); // 05:30 ora legale
+  assert.equal(ingestDateStr(new Date('2026-07-10T04:30:00Z')), '2026-07-10'); // 06:30 ora legale
+  assert.equal(ingestDateStr(new Date('2026-03-01T00:30:00Z')), '2026-02-28'); // fine mese
+});

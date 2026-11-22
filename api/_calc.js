@@ -6,7 +6,9 @@ import {
 const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
 
 // Calcolo puro del riepilogo: nessun accesso a database né all'orologio (today è un parametro).
-export function computeSummary({ s, today, transactions, recurring, bonuses, delta, goalRows, overrides, history = [] }) {
+export function computeSummary({ s, today, transactions, recurring, bonuses, delta, goalRows, overrides, history = [], skips = [] }) {
+  // Sabati in cui non vai a cena: non hanno quota nel budget delle cene
+  const skip = new Set(skips);
   const p = period(today, s.salary_day);
 
   // Movimenti "rimborsati da altri" (es. biglietti pagati da te e ridati da tuo padre): sono come se non esistessero,
@@ -47,7 +49,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
   const leftSet = s.habit_left !== null && s.habit_left_for === p.start;
   // Cene del sabato: quota = importo a sabato × sabati del periodo (se non impostato, vale la quota mensile fissa)
   const weekly = s.habit_weekly || 0;
-  const satCount = (a, b) => { let n = 0; for (let d = a; d < b; d = addDaysStr(d, 1)) if (new Date(d + 'T00:00:00Z').getUTCDay() === 6) n++; return n; };
+  const satCount = (a, b) => { let n = 0; for (let d = a; d < b; d = addDaysStr(d, 1)) if (new Date(d + 'T00:00:00Z').getUTCDay() === 6 && !skip.has(d)) n++; return n; };
   const habitMonths = (from, D) => {
     // mesi (frazionari) di periodo di stipendio compresi tra from e D
     const first = period(from, s.salary_day);
@@ -114,7 +116,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
   // una spesa in "Ristoranti" fuori dal sabato la conto come cena ma te lo chiedo. Le ricorrenti non sono cene.
   // Sabato già passato: la quota riservata è quello che hai davvero speso (max l'importo del sabato), il resto si libera.
   const NON_DINNER = new Set(['Benzina', 'Salute', 'Casa', 'Abbonamenti', 'Capelli', 'Trasporti']);
-  const isSat = (d) => new Date(d + 'T00:00:00Z').getUTCDay() === 6;
+  const isSat = (d) => new Date(d + 'T00:00:00Z').getUTCDay() === 6 && !skip.has(d);
   const dinnerState = (x) => {
     if (x.type !== 'expense' || x.refund || used.has(x.id)) return 'no';
     if (x.dinner === true) return 'yes';
@@ -244,7 +246,7 @@ export function computeSummary({ s, today, transactions, recurring, bonuses, del
 
   return {
     today,
-    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, habit_weekly: weekly, margin: s.margin, habit_left: leftSet ? s.habit_left : null },
+    settings: { salary: s.salary, salary_day: s.salary_day, habit: s.habit, habit_weekly: weekly, margin: s.margin, habit_left: leftSet ? s.habit_left : null, dinnerSkips: [...skip].sort() },
     period: p,
     totals: {
       income: salaryOf(p.start) + extra + arrivedBonus,

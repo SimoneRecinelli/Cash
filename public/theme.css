@@ -177,3 +177,7 @@ header a { border-radius: 14px; }
 .howhint:empty { display: none; }
 .effw { color: var(--warn); font-weight: 600; }
 .tx .t2 { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; }
+
+.skiprow { display: flex; gap: 10px; margin: 8px 0 0; }
+.skiprow input { flex: 1; min-width: 0; }
+.skiprow .btn2 { width: auto; margin: 0; padding: 0 18px; }
